@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Stroll</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #eee; display: grid; place-items: center; height: 100vh; }
+      #status { opacity: 0.6; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>Stroll</h1>
+      <div id="status">connecting…</div>
+    </div>
+    <script>
+      const status = document.getElementById("status");
+      const ws = new WebSocket(`ws://${location.host}/ws`);
+      ws.onopen = () => { status.textContent = "connected"; ws.send(JSON.stringify({ type: "test" })); };
+      ws.onclose = () => { status.textContent = "disconnected"; };
+      ws.onerror = () => { status.textContent = "error"; };
+    </script>
+  </body>
+</html>
