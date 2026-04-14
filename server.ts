@@ -1,4 +1,5 @@
 import { getLanIp, printQr } from "./net";
+import index from "./public/index.html";
 
 const PORT = 8080;
 const ip = getLanIp();
@@ -8,9 +9,7 @@ const server = Bun.serve({
   port: PORT,
   hostname: "0.0.0.0",
   routes: {
-    "/": new Response(await Bun.file("public/index.html").bytes(), {
-      headers: { "content-type": "text/html; charset=utf-8" },
-    }),
+    "/": index,
   },
   fetch(req, server) {
     const { pathname } = new URL(req.url);

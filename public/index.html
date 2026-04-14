@@ -3,23 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <title>Stroll</title>
+    <title>paddy</title>
     <style>
-      body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #eee; display: grid; place-items: center; height: 100vh; }
-      #status { opacity: 0.6; font-size: 14px; }
+      html, body { margin: 0; height: 100%; overscroll-behavior: none; touch-action: none; }
+      body { font-family: system-ui, sans-serif; background: #111; color: #eee; display: grid; place-items: center; user-select: none; -webkit-user-select: none; }
+      h1 { margin: 0; font-weight: 500; }
+      #status { margin-top: 8px; text-align: center; opacity: 0.5; font-size: 13px; min-height: 1em; }
     </style>
   </head>
   <body>
     <div>
-      <h1>Stroll</h1>
-      <div id="status">connecting…</div>
+      <h1>paddy</h1>
+      <div id="status"></div>
     </div>
-    <script>
-      const status = document.getElementById("status");
-      const ws = new WebSocket(`ws://${location.host}/ws`);
-      ws.onopen = () => { status.textContent = "connected"; ws.send(JSON.stringify({ type: "test" })); };
-      ws.onclose = () => { status.textContent = "disconnected"; };
-      ws.onerror = () => { status.textContent = "error"; };
-    </script>
+    <script type="module" src="./controller.ts"></script>
   </body>
 </html>
