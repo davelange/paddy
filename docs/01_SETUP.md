@@ -49,6 +49,10 @@ paddy/
 - npm: `qrcode-terminal` (QR in stdout).
 - System: none — CoreGraphics + CoreFoundation ship with macOS.
 
+## Accessibility permission
+
+macOS silently drops synthesized events from processes that lack Accessibility access. Grant the app running `bun` (usually Terminal, iTerm, or your editor) permission under **System Settings → Privacy & Security → Accessibility**, then relaunch the server. Without this, the phone will connect and messages will flow, but no scrolling will occur in the frontmost app.
+
 ## Verification
 
 1. `bun run server.ts` — prints LAN URL + QR, listens on `:8080`.
