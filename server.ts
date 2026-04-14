@@ -1,4 +1,5 @@
 import { getLanIp, printQr } from "./net";
+import { postScroll } from "./emit";
 
 const PORT = 8080;
 const ip = getLanIp();
@@ -27,9 +28,13 @@ const server = Bun.serve({
     message(ws, raw) {
       try {
         const msg = JSON.parse(typeof raw === "string" ? raw : raw.toString());
-        console.log("msg:", msg);
-      } catch {
-        console.log("msg (raw):", raw);
+        if (msg.type === "scroll") {
+          const dx = Number.isFinite(msg.dx) ? (msg.dx | 0) : 0;
+          const dy = Number.isFinite(msg.dy) ? (msg.dy | 0) : 0;
+          if (dx || dy) postScroll(dy, dx);
+        }
+      } catch (e) {
+        console.log("bad msg:", e);
       }
     },
     close() {
