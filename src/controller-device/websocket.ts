@@ -1,7 +1,7 @@
 const statusEl = document.getElementById("status") as HTMLDivElement;
 
 export class WSConnection {
-	socket = new WebSocket(`ws://${location.host}/ws`);
+	socket = new WebSocket(`wss://${location.host}/ws`);
 	state: "idle" | "open" | "error" = "idle";
 
 	constructor() {

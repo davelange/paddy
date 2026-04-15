@@ -1,16 +1,20 @@
 import index from "./controller-device/index.html";
 import { createScrollEvent, createZoomEvent } from "./emit";
-import { getLanIp, printQr } from "./network";
+import { cert, getLanIp, key, printQr } from "./network";
 
 const PORT = 8080;
 const ip = getLanIp();
-const url = `http://${ip}:${PORT}`;
+const url = `https://${ip}:${PORT}`;
 
 const server = Bun.serve({
 	port: PORT,
 	hostname: "0.0.0.0",
 	routes: {
 		"/": index,
+	},
+	tls: {
+		cert,
+		key,
 	},
 	fetch(req, server) {
 		const { pathname } = new URL(req.url);

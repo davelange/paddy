@@ -15,3 +15,6 @@ export function getLanIp(): string {
 export function printQr(url: string): void {
 	qrcode.generate(url, { small: true });
 }
+
+export const cert = Bun.file(process.env.CERT_FILE_PATH as string)
+export const key = Bun.file(process.env.CERT_KEY_FILE_PATH as string)
