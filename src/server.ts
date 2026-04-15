@@ -28,7 +28,7 @@ const server = Bun.serve({
     open() {
       console.log("[ws] open");
     },
-    message(ws, raw) {
+    message(_ws, raw) {
       try {
         const msg = JSON.parse(typeof raw === "string" ? raw : raw.toString());
         
@@ -38,7 +38,10 @@ const server = Bun.serve({
           const dy = msg.dy
           
           createScrollEvent(dy, dx)
+        } else {
+          console.log(msg)
         }
+
       } catch (e) {
         console.log("bad msg:", e);
       }

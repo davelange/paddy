@@ -1,8 +1,17 @@
+import { GestureManager } from "./pointer";
 import { WSConnection } from "./websocket";
 
-const ws = new WSConnection()
+const ws = new WSConnection();
+new GestureManager({
+  onPinch({ x, y }) {
+    ws.push({ type: "pinch", x, y });
+  },
+  onScroll({ x, y }) {
+    ws.push({ type: "scroll", dx: x, dy: y });
+  },
+});
 
-const state = {
+/* const state = {
   dx: 0,
   dy: 0,
   prevX: 0,
@@ -22,7 +31,8 @@ function handleMove(x: number, y: number) {
   state.dx += rawDx;
   state.dy += rawDy;
 
-  ws.push({ type: "scroll", dx: state.dx, dy: state.dy })
+  //ws.push({ type: "scroll", dx: state.dx, dy: state.dy })
+  ws.log(`${x.toFixed()}, ${y.toFixed()}`)
 
   state.dx = 0
   state.dy = 0
@@ -39,6 +49,7 @@ addEventListener("pointerup", () => {
 addEventListener("pointercancel", () => {
   state.down = false; 
 });
-addEventListener("pointermove", (e: MouseEvent) => {
+addEventListener("pointermove", (e: PointerEvent) => {
  handleMove(e.clientX, e.clientY) 
 });
+ */

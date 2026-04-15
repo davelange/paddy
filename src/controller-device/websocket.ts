@@ -1,4 +1,5 @@
 const statusEl = document.getElementById("status") as HTMLDivElement;
+const logEl = document.getElementById("log") as HTMLDivElement;
 
 export class WSConnection {
   socket = new WebSocket(`ws://${location.host}/ws`)
@@ -19,9 +20,5 @@ export class WSConnection {
 
   push(payload: Record<string, string | number>) {
     this.socket.send(JSON.stringify(payload));
-  }
-
-  log(msg: string) {
-    statusEl.textContent = msg
   }
 }
