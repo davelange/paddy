@@ -1,5 +1,5 @@
-import { getLanIp, printQr } from "./net";
-import index from "./public/index.html";
+import { getLanIp, printQr } from "./network";
+import index from './controller-device/index.html'
 import { createScrollEvent } from "./emit";
 
 const PORT = 8080;
@@ -14,15 +14,19 @@ const server = Bun.serve({
   },
   fetch(req, server) {
     const { pathname } = new URL(req.url);
+
     if (pathname === "/ws") {
-      if (server.upgrade(req)) return;
+      if (server.upgrade(req)) {
+        return;
+      }
+
       return new Response("upgrade failed", { status: 400 });
     }
     return new Response("not found", { status: 404 });
   },
   websocket: {
-    open(ws) {
-      console.log("ws open");
+    open() {
+      console.log("[ws] open");
     },
     message(ws, raw) {
       try {
@@ -40,7 +44,7 @@ const server = Bun.serve({
       }
     },
     close() {
-      console.log("ws close");
+      console.log("[ws] close");
     },
   },
 });
