@@ -1,5 +1,11 @@
 import index from "./controller-device/index.html";
-import { createScrollEvent, createZoomEvent } from "./emit";
+import {
+	createKeyEvent,
+	createScrollEvent,
+	createZoomEvent,
+	kVK_LeftArrow,
+	kVK_RightArrow,
+} from "./emit";
 import { cert, getLanIp, key, printQr } from "./network";
 
 const PORT = 8080;
@@ -43,6 +49,12 @@ const server = Bun.serve({
 
 					case "pinch":
 						createZoomEvent(-msg.y);
+						break;
+
+					case "scrub":
+						createKeyEvent(
+							msg.direction === "forward" ? kVK_RightArrow : kVK_LeftArrow,
+						);
 						break;
 
 					default:

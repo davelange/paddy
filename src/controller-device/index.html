@@ -42,6 +42,31 @@
         opacity: 0.5;
         font-size: 13px;
       }
+      #scrub-controls {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        gap: 2px;
+        padding: 8px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        box-sizing: border-box;
+      }
+      #scrub-controls button {
+        flex: 1;
+        height: 64px;
+        font-size: 32px;
+        color: #eee;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #scrub-controls button:active {
+        background: rgba(255, 255, 255, 0.2);
+      }
     </style>
   </head>
   <body>
@@ -49,6 +74,10 @@
       <h1>paddy</h1>
       <div id="status"></div>
       <div id="log"></div>
+    </div>
+    <div id="scrub-controls">
+      <button id="scrub-back" type="button" aria-label="Scrub back">‹</button>
+      <button id="scrub-forward" type="button" aria-label="Scrub forward">›</button>
     </div>
     <script type="module" src="./controller.ts"></script>
   </body>

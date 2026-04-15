@@ -12,3 +12,16 @@ new GestureManager({
 	},
 	onLog() {},
 });
+
+function bindScrub(id: string, direction: "back" | "forward") {
+	const el = document.getElementById(id);
+	if (!el) return;
+	el.addEventListener("pointerdown", (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		ws.push({ type: "scrub", direction });
+	});
+}
+
+bindScrub("scrub-back", "back");
+bindScrub("scrub-forward", "forward");

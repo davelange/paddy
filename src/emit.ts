@@ -8,6 +8,10 @@ const lib = dlopen(
 			args: [FFIType.ptr, FFIType.u32, FFIType.u32, FFIType.i32],
 			returns: FFIType.ptr,
 		},
+		CGEventCreateKeyboardEvent: {
+			args: [FFIType.ptr, FFIType.u16, FFIType.bool],
+			returns: FFIType.ptr,
+		},
 		// Set Integer Fields (e.g., for the "Continuous" flag)
 		CGEventSetIntegerValueField: {
 			args: [FFIType.ptr, FFIType.u32, FFIType.i64],
@@ -97,6 +101,22 @@ export function createScrollEvent(dy: number, dx: number) {
 	// 6. Post and Release
 	lib.symbols.CGEventPost(kCGHIDEventTap, event);
 	lib.symbols.CFRelease(event);
+}
+
+export const kVK_LeftArrow = 0x7b;
+export const kVK_RightArrow = 0x7c;
+
+export function createKeyEvent(keyCode: number) {
+	for (const isDown of [true, false]) {
+		const event = lib.symbols.CGEventCreateKeyboardEvent(null, keyCode, isDown);
+		if (!event) {
+			console.error("Failed to create key event");
+			return;
+		}
+		lib.symbols.CGEventSetFlags(event, 0n);
+		lib.symbols.CGEventPost(kCGHIDEventTap, event);
+		lib.symbols.CFRelease(event);
+	}
 }
 
 export function createZoomEvent(delta: number) {
