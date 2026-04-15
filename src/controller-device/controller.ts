@@ -9,6 +9,7 @@ new GestureManager({
   onScroll({ x, y }) {
     ws.push({ type: "scroll", dx: x, dy: y });
   },
+  onLog(msg) {},
 });
 
 /* const state = {

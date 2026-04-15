@@ -20,6 +20,10 @@ const lib = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphi
     args: [FFIType.u32, FFIType.ptr],
     returns: FFIType.void,
   },
+  CGEventSetFlags: {
+    args: [FFIType.ptr, FFIType.u64],
+    returns: FFIType.void,
+  },
   CFRelease: {
     args: [FFIType.ptr],
     returns: FFIType.void,
@@ -37,6 +41,7 @@ const kCGScrollWheelEventFixedPtDeltaAxis2 = 94; // Horizontal high-precision
 
 const kCGScrollEventUnitPixel = 0;
 const kCGHIDEventTap = 0;
+const kCGEventFlagMaskCommand = 0x100000;
 
 export function createScrollEvent(dy: number, dx: number) {
   // 1. Create a base scroll event (we use 0 for the initial delta)
@@ -63,7 +68,31 @@ export function createScrollEvent(dy: number, dx: number) {
   lib.symbols.CGEventSetDoubleValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1, dy);
   lib.symbols.CGEventSetDoubleValueField(event, kCGScrollWheelEventFixedPtDeltaAxis2, dx);
 
-  // 5. Post and Release
+  // 5. Ensure no modifier flags leak in from current keyboard state
+  lib.symbols.CGEventSetFlags(event, 0n);
+
+  // 6. Post and Release
+  lib.symbols.CGEventPost(kCGHIDEventTap, event);
+  lib.symbols.CFRelease(event);
+}
+
+export function createZoomEvent(delta: number) {
+  const event = lib.symbols.CGEventCreateScrollWheelEvent(
+    null,
+    kCGScrollEventUnitPixel,
+    1,
+    0,
+  );
+
+  if (!event) {
+    console.error("Failed to create zoom event");
+    return;
+  }
+
+  lib.symbols.CGEventSetIntegerValueField(event, kCGScrollWheelEventIsContinuous, 1);
+  lib.symbols.CGEventSetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1, Math.round(delta));
+  lib.symbols.CGEventSetDoubleValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1, delta);
+  lib.symbols.CGEventSetFlags(event, BigInt(kCGEventFlagMaskCommand));
   lib.symbols.CGEventPost(kCGHIDEventTap, event);
   lib.symbols.CFRelease(event);
 }

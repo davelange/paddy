@@ -1,6 +1,6 @@
 import { getLanIp, printQr } from "./network";
-import index from './controller-device/index.html'
-import { createScrollEvent } from "./emit";
+import index from "./controller-device/index.html";
+import { createScrollEvent, createZoomEvent } from "./emit";
 
 const PORT = 8080;
 const ip = getLanIp();
@@ -31,17 +31,20 @@ const server = Bun.serve({
     message(_ws, raw) {
       try {
         const msg = JSON.parse(typeof raw === "string" ? raw : raw.toString());
-        
-        
-        if (msg.type === "scroll") {
-          const dx = msg.dx
-          const dy = msg.dy
-          
-          createScrollEvent(dy, dx)
-        } else {
-          console.log(msg)
-        }
 
+        switch (msg.type) {
+          case "scroll":
+            createScrollEvent(msg.dy, msg.dx);
+            break;
+
+          case "pinch":
+            createZoomEvent(-msg.y);
+            break;
+
+          default:
+            console.log(msg);
+            break;
+        }
       } catch (e) {
         console.log("bad msg:", e);
       }

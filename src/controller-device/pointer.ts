@@ -16,13 +16,16 @@ export class GestureManager {
 
   onScroll: (delta: Coord) => void;
   onPinch: (delta: Coord) => void;
+  onLog: (msg: string) => void;
 
   constructor(options: {
     onScroll: (delta: Coord) => void;
     onPinch: (delta: Coord) => void;
+    onLog: (msg: string) => void;
   }) {
     this.onScroll = options.onScroll;
     this.onPinch = options.onPinch;
+    this.onLog = options.onLog;
 
     this.attachEventListeners();
   }
