@@ -1,39 +1,44 @@
-const status = document.getElementById("status") as HTMLDivElement;
-const ws = new WebSocket(`ws://${location.host}/ws`);
-let opened = false;
-ws.onopen = () => { opened = true; };
-const fail = () => { if (!opened) status.textContent = "connection failed"; };
-ws.onerror = fail;
-ws.onclose = fail;
+import { WSConnection } from "./websocket";
 
-let down = false, lastX = 0, lastY = 0;
-let accDx = 0, accDy = 0;
+const ws = new WSConnection()
+
+const state = {
+  dx: 0,
+  dy: 0,
+  prevX: 0,
+  prevY: 0,
+  down: false,
+}
+
+function handleMove(x: number, y: number) {
+  if (!state.down) {
+    return
+  };
+
+  const rawDx = x - state.prevX;
+  const rawDy = y - state.prevY;
+  state.prevX = x;
+  state.prevY = y;
+  state.dx += rawDx;
+  state.dy += rawDy;
+
+  ws.push({ type: "scroll", dx: state.dx, dy: state.dy })
+
+  state.dx = 0
+  state.dy = 0
+}
 
 addEventListener("pointerdown", (e: MouseEvent) => {
-  down = true;
-  lastX = e.clientX;
-  lastY = e.clientY;
+  state.down = true;
+  state.prevX = e.clientX;
+  state.prevY = e.clientY;
 });
-const end = () => { down = false; };
-addEventListener("pointerup", end);
-addEventListener("pointercancel", end);
-
+addEventListener("pointerup", () => { 
+  state.down = false; 
+});
+addEventListener("pointercancel", () => {
+  state.down = false; 
+});
 addEventListener("pointermove", (e: MouseEvent) => {
-  if (!down) return;
-  const rawDx = e.clientX - lastX;
-  const rawDy = e.clientY - lastY;
-  lastX = e.clientX;
-  lastY = e.clientY;
-  accDx += rawDy;
-  accDy += -rawDx;
+ handleMove(e.clientX, e.clientY) 
 });
-
-function flush() {
-  if ((accDx || accDy) && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "move", dx: accDx, dy: accDy }));
-    accDx = 0;
-    accDy = 0;
-  }
-  requestAnimationFrame(flush);
-}
-requestAnimationFrame(flush);
