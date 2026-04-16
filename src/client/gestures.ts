@@ -11,30 +11,36 @@ type TouchTrack = {
 	delta: Coord;
 };
 
-export class GestureManager {
-	pointers = new Map<number, TouchTrack>();
-
+type Options = {
 	onScroll: (delta: Coord) => void;
 	onPinch: (delta: Coord) => void;
-	onLog: (msg: string) => void;
+};
 
-	constructor(options: {
-		onScroll: (delta: Coord) => void;
-		onPinch: (delta: Coord) => void;
-		onLog: (msg: string) => void;
-	}) {
+export class GestureManager {
+	pointers = new Map<number, TouchTrack>();
+	onScroll: Options["onScroll"];
+	onPinch: Options["onPinch"];
+
+	private down = (e: PointerEvent) => this.handleDown(e);
+	private up = (e: PointerEvent) => this.handleUp(e);
+	private move = (e: PointerEvent) => this.handleMove(e);
+
+	constructor(options: Options) {
 		this.onScroll = options.onScroll;
 		this.onPinch = options.onPinch;
-		this.onLog = options.onLog;
 
-		this.attachEventListeners();
+		addEventListener("pointerdown", this.down);
+		addEventListener("pointerup", this.up);
+		addEventListener("pointercancel", this.up);
+		addEventListener("pointermove", this.move);
 	}
 
-	attachEventListeners() {
-		addEventListener("pointerdown", (e: PointerEvent) => this.handleDown(e));
-		addEventListener("pointerup", (e: PointerEvent) => this.handleUp(e));
-		addEventListener("pointercancel", (e: PointerEvent) => this.handleUp(e));
-		addEventListener("pointermove", (e: PointerEvent) => this.handleMove(e));
+	destroy() {
+		removeEventListener("pointerdown", this.down);
+		removeEventListener("pointerup", this.up);
+		removeEventListener("pointercancel", this.up);
+		removeEventListener("pointermove", this.move);
+		this.pointers.clear();
 	}
 
 	handleDown(ev: PointerEvent) {

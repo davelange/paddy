@@ -1,0 +1,21 @@
+html,
+body {
+	margin: 0;
+	height: 100%;
+	overscroll-behavior: none;
+	touch-action: none;
+}
+
+body {
+	font-family: system-ui, sans-serif;
+	background: #111;
+	color: #eee;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+#app {
+	min-height: 100%;
+	display: grid;
+	place-items: center;
+}

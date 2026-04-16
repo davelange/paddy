@@ -94,7 +94,7 @@ const server = Bun.serve<WsData, never>({
 });
 
 const url = getOrigin(PORT);
-console.log(`Stroll listening on ${url} (rpID=${getRpId()})`);
+console.log(`Paddy listening on ${url} (rpID=${getRpId()})`);
 console.log(`Open the URL above from the phone`);
 printQr(url);
 
