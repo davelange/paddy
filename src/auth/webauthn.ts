@@ -1,6 +1,5 @@
 import type {
 	AuthenticationResponseJSON,
-	AuthenticatorTransportFuture,
 	PublicKeyCredentialCreationOptionsJSON,
 	PublicKeyCredentialRequestOptionsJSON,
 	RegistrationResponseJSON,
@@ -60,7 +59,6 @@ export async function verifyAuthentication(
 		id: string;
 		publicKey: Uint8Array;
 		counter: number;
-		transports?: AuthenticatorTransportFuture[];
 	},
 	port: number,
 ) {
@@ -73,7 +71,6 @@ export async function verifyAuthentication(
 			id: credential.id,
 			publicKey: credential.publicKey.slice(),
 			counter: credential.counter,
-			transports: credential.transports,
 		},
 		requireUserVerification: false,
 	});

@@ -3,7 +3,7 @@ import {
 	startRegistration,
 } from "@simplewebauthn/browser";
 
-type State = "login" | "register" | "pending" | "authed" | "error";
+type State = "login" | "pending" | "authed";
 
 const authSection = document.getElementById("auth") as HTMLElement;
 const gestureSurface = document.getElementById(
@@ -11,22 +11,16 @@ const gestureSurface = document.getElementById(
 ) as HTMLElement;
 const scrubControls = document.getElementById("scrub-controls") as HTMLElement;
 const loginView = document.getElementById("auth-login") as HTMLElement;
-const registerView = document.getElementById("auth-register") as HTMLElement;
 const pendingView = document.getElementById("auth-pending") as HTMLElement;
 const errorEl = document.getElementById("auth-error") as HTMLElement;
-const labelInput = document.getElementById("auth-label") as HTMLInputElement;
+const loginBtn = document.getElementById("auth-login-btn") as HTMLButtonElement;
 const registerBtn = document.getElementById(
 	"auth-register-btn",
-) as HTMLButtonElement;
-const loginBtn = document.getElementById("auth-login-btn") as HTMLButtonElement;
-const showRegisterBtn = document.getElementById(
-	"auth-show-register",
 ) as HTMLButtonElement;
 const retryBtn = document.getElementById("auth-retry") as HTMLButtonElement;
 
 function setState(state: State): void {
 	loginView.hidden = state !== "login";
-	registerView.hidden = state !== "register";
 	pendingView.hidden = state !== "pending";
 	if (state === "authed") {
 		authSection.hidden = true;
@@ -48,11 +42,7 @@ async function register(): Promise<void> {
 	setError(null);
 	registerBtn.disabled = true;
 	try {
-		const optionsRes = await fetch("/register/options", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ label: labelInput.value }),
-		});
+		const optionsRes = await fetch("/register/options", { method: "POST" });
 		if (!optionsRes.ok) throw new Error("options failed");
 		const options = await optionsRes.json();
 		const attestation = await startRegistration({ optionsJSON: options });
@@ -108,12 +98,8 @@ async function login(): Promise<void> {
 	}
 }
 
-registerBtn.addEventListener("click", register);
 loginBtn.addEventListener("click", login);
-showRegisterBtn.addEventListener("click", () => {
-	setError(null);
-	setState("register");
-});
+registerBtn.addEventListener("click", register);
 retryBtn.addEventListener("click", () => {
 	const id = localStorage.getItem("paddy:credentialId");
 	if (id) pollApproval(id);

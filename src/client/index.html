@@ -51,14 +51,6 @@
         max-width: 90vw;
         text-align: center;
       }
-      #auth input {
-        padding: 12px;
-        font-size: 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: rgba(255, 255, 255, 0.06);
-        color: #eee;
-      }
       #auth button {
         padding: 12px;
         font-size: 16px;
@@ -119,16 +111,7 @@
       <h1>paddy</h1>
       <div id="auth-login">
         <button id="auth-login-btn" type="button">unlock with passkey</button>
-        <button id="auth-show-register" class="link" type="button">register this device</button>
-      </div>
-      <div id="auth-register" hidden>
-        <input
-          id="auth-label"
-          type="text"
-          placeholder="device label (optional)"
-          autocomplete="off"
-        />
-        <button id="auth-register-btn" type="button">create passkey</button>
+        <button id="auth-register-btn" class="link" type="button">register this device</button>
       </div>
       <div id="auth-pending" hidden>
         <p>waiting for approval on host Mac.</p>

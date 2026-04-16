@@ -20,23 +20,27 @@ function shortId(id: string): string {
 	return id.slice(0, 8);
 }
 
-function printRows(rows: CredentialRow[]): void {
+function printRows(rows: CredentialRow[], numbered = false): void {
 	if (rows.length === 0) {
 		console.log("(no credentials)");
 		return;
 	}
-	console.log(["ID", "STATUS", "LABEL", "UA", "IP", "CREATED"].join("\t"));
-	for (const r of rows) {
-		console.log(
-			[
-				shortId(r.id),
-				r.status,
-				r.label ?? "-",
-				(r.user_agent ?? "-").slice(0, 40),
-				r.ip ?? "-",
-				fmtTime(r.created_at),
-			].join("\t"),
-		);
+	const header = numbered
+		? ["#", "ID", "LABEL", "CREATED"]
+		: ["ID", "STATUS", "LABEL", "CREATED", "LAST USED"];
+	console.log(header.join("\t"));
+	for (let i = 0; i < rows.length; i++) {
+		const r = rows[i]!;
+		const cols = numbered
+			? [String(i + 1), shortId(r.id), r.label, fmtTime(r.created_at)]
+			: [
+					shortId(r.id),
+					r.status,
+					r.label,
+					fmtTime(r.created_at),
+					fmtTime(r.last_used_at),
+				];
+		console.log(cols.join("\t"));
 	}
 }
 
@@ -45,15 +49,24 @@ function resolveId(prefix: string): string | null {
 	return match?.id ?? null;
 }
 
+function resolvePendingByIndex(index: number): string | null {
+	const pending = listCredentials("pending");
+	const row = pending[index - 1];
+	return row?.id ?? null;
+}
+
 function usage(): never {
 	console.log(
 		`usage:
   admin list [--pending|--approved|--rejected]
-  admin approve <id-prefix>
+  admin approve <id-prefix | #index>
   admin reject  <id-prefix>
   admin revoke  <id-prefix>
   admin clear-sessions --yes
-  admin clear-all      --yes`,
+  admin clear-all      --yes
+
+approve supports #N to approve by position in the pending list:
+  admin approve #1    approve the first pending credential`,
 	);
 	process.exit(1);
 }
@@ -74,7 +87,38 @@ switch (cmd) {
 		printRows(listCredentials(filter));
 		break;
 	}
-	case "approve":
+	case "approve": {
+		const arg = args[0];
+		if (!arg) usage();
+		const indexMatch = arg.match(/^#(\d+)$/);
+		let id: string | null;
+		if (indexMatch) {
+			id = resolvePendingByIndex(Number(indexMatch[1]));
+			if (!id) {
+				const pending = listCredentials("pending");
+				if (pending.length === 0) {
+					console.error("no pending credentials");
+				} else {
+					console.error(`index out of range (1-${pending.length})`);
+					printRows(pending, true);
+				}
+				process.exit(1);
+			}
+		} else {
+			id = resolveId(arg);
+			if (!id) {
+				console.error("no credential matching", arg);
+				process.exit(1);
+			}
+		}
+		const ok = setCredentialStatus(id, "approved");
+		if (!ok) {
+			console.error("update failed");
+			process.exit(1);
+		}
+		console.log(`approved ${shortId(id)}`);
+		break;
+	}
 	case "reject": {
 		const prefix = args[0];
 		if (!prefix) usage();
@@ -83,16 +127,13 @@ switch (cmd) {
 			console.error("no credential matching", prefix);
 			process.exit(1);
 		}
-		const ok = setCredentialStatus(
-			id,
-			cmd === "approve" ? "approved" : "rejected",
-		);
+		const ok = setCredentialStatus(id, "rejected");
 		if (!ok) {
 			console.error("update failed");
 			process.exit(1);
 		}
-		if (cmd === "reject") deleteSessionsForCredential(id);
-		console.log(`${cmd}d ${shortId(id)}`);
+		deleteSessionsForCredential(id);
+		console.log(`rejected ${shortId(id)}`);
 		break;
 	}
 	case "revoke": {

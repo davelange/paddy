@@ -11,7 +11,7 @@ Decided constraints:
 
 - RP ID = mDNS hostname (`paddy.local`-style). macOS already advertises `<hostname>.local` via Bonjour, so server reads `os.hostname()` and uses `<hostname>.local` as both URL host and RP ID. TLS cert needs that name in its SANs.
 - WS auth = HttpOnly cookie read during upgrade.
-- Registration carries an optional label; UA + IP always recorded for the admin to recognize the device.
+- No typed label: server derives a label from the AAGUID in the attestation (e.g. "iCloud Keychain", "Chrome on Mac", fallback "passkey"). Admin distinguishes duplicates by `created_at`.
 
 ## Architecture
 
@@ -39,10 +39,11 @@ Decided constraints:
 
 - `src/auth/db.ts` — `bun:sqlite` connection (`paddy.db` next to server), schema migration on boot, query helpers.
 - `src/auth/webauthn.ts` — thin wrapper around `@simplewebauthn/server`: `generateRegistration`, `verifyRegistration`, `generateAuthentication`, `verifyAuthentication`. Reads RP ID + origin from `network.ts`.
+- `src/auth/aaguid.ts` — static map of known passkey-provider AAGUIDs → human names, with `"passkey"` fallback.
 - `src/auth/challenges.ts` — `Map<string, { challenge: string; expires: number }>` with 5-min TTL, swept lazily on read.
 - `src/auth/session.ts` — `createSession(credentialId)`, `getSession(sid)`, `revokeSession(sid)`. Cookies: `sid=<32 bytes base64url>; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=3600`.
 - `src/auth/routes.ts` — exports a function that takes a `Request` and returns a `Response | null` for `/register/options`, `/register/verify`, `/login/options`, `/login/verify`, `/logout`. Returns `null` when path doesn't match so `server.ts` can fall through.
-- `src/admin-cli.ts` — separate entrypoint (`bun run src/admin-cli.ts <cmd>`). Subcommands: `list [--pending|--approved]`, `approve <id>`, `reject <id>`, `revoke <id>`. Opens the same SQLite file. Pretty-prints rows with label, UA, IP, created_at.
+- `src/admin-cli.ts` — separate entrypoint (`bun run src/admin-cli.ts <cmd>`). Subcommands: `list [--pending|--approved]`, `approve <id>`, `reject <id>`, `revoke <id>`. Opens the same SQLite file. Pretty-prints rows with label, created_at, last_used_at.
 - `src/controller-device/auth.ts` — client logic: detects unauth state, renders register/login UI, drives `@simplewebauthn/browser` ceremonies, polls `/register/status` once after register so user gets a "waiting for approval" message.
 
 ## Files to modify
@@ -56,7 +57,7 @@ Decided constraints:
   - Add `getOrigin(port)` returning `https://${rpId}:${port}` — used for both the QR and WebAuthn `expectedOrigin`.
   - Update QR + console log to use the hostname URL, not the IP.
 - `src/controller-device/index.html`
-  - Add `<section id="auth">` with two states (register form + login button) and a "pending approval" message. Hide the gesture surface until authed.
+  - Add `<section id="auth">` with a login button, a "register this device" button, and a "pending approval" message. Hide the gesture surface until authed.
   - Import `auth.ts` before `controller.ts`; `controller.ts` waits for an `auth-ready` event before instantiating `WSConnection`.
 - `src/controller-device/controller.ts`
   - Defer `new WSConnection()` and gesture binding until auth resolves.
@@ -72,11 +73,8 @@ CREATE TABLE credentials (
   credential_id   BLOB NOT NULL UNIQUE,   -- raw credentialID
   public_key      BLOB NOT NULL,          -- COSE
   counter         INTEGER NOT NULL,
-  transports      TEXT,                   -- json array
   user_handle     BLOB NOT NULL,          -- random 16 bytes per credential
-  label           TEXT,
-  user_agent      TEXT,
-  ip              TEXT,
+  label           TEXT NOT NULL,
   status          TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
   created_at      INTEGER NOT NULL,
   approved_at     INTEGER,
@@ -108,8 +106,8 @@ Discoverable credentials (resident keys, `residentKey: 'required'`) so login doe
    - `bun run dev`. Verify QR/log shows `https://<host>.local:8080`.
    - Confirm `paddy.db` is created with both tables.
 3. **Register**
-   - Phone scans QR → register form appears → submit with label "Test phone" → biometric prompt → "waiting for approval" message.
-   - On Mac: `bun run admin list` shows one pending row with label, UA, IP.
+   - Phone scans QR → tap "register this device" → biometric prompt → "waiting for approval" message.
+   - On Mac: `bun run admin list` shows one pending row with the auto-derived label (e.g. "iCloud Keychain") and created_at.
 4. **Approve**
    - `bun run admin approve <id>` → row flips to approved.
    - Phone (which is polling `/register/status` once or on retry) progresses to login.

@@ -8,11 +8,8 @@ export type CredentialRow = {
 	credential_id: Uint8Array;
 	public_key: Uint8Array;
 	counter: number;
-	transports: string | null;
 	user_handle: Uint8Array;
-	label: string | null;
-	user_agent: string | null;
-	ip: string | null;
+	label: string;
 	status: CredentialStatus;
 	created_at: number;
 	approved_at: number | null;
@@ -23,27 +20,21 @@ export function insertCredential(row: {
 	credentialId: Uint8Array;
 	publicKey: Uint8Array;
 	counter: number;
-	transports: string[] | undefined;
 	userHandle: Uint8Array;
-	label: string | null;
-	userAgent: string | null;
-	ip: string | null;
+	label: string;
 }) {
 	const id = randomUUIDv7();
 	db.query(
 		`INSERT INTO credentials
-			(id, credential_id, public_key, counter, transports, user_handle, label, user_agent, ip, status, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+			(id, credential_id, public_key, counter, user_handle, label, status, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
 	).run(
 		id,
 		row.credentialId,
 		row.publicKey,
 		row.counter,
-		row.transports ? JSON.stringify(row.transports) : null,
 		row.userHandle,
 		row.label,
-		row.userAgent,
-		row.ip,
 		Date.now(),
 	);
 

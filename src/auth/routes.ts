@@ -1,10 +1,10 @@
-import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import {
 	decodeClientDataJSON,
 	generateUserID,
 	isoBase64URL,
 } from "@simplewebauthn/server/helpers";
 import { PORT } from "../server/network";
+import { nameForAaguid } from "./aaguid";
 import { ChallengeStore } from "./challenges";
 import {
 	bumpCredentialCounter,
@@ -27,7 +27,6 @@ import {
 
 const registrationChallenges = new ChallengeStore<{
 	userHandle: Uint8Array;
-	label: string | null;
 }>();
 const authenticationChallenges = new ChallengeStore<true>();
 
@@ -41,10 +40,6 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 	});
 }
 
-function clientIpFrom(req: Request): string | null {
-	return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-}
-
 function readChallengeFromClientData(b64url: string): string | null {
 	try {
 		return decodeClientDataJSON(b64url).challenge ?? null;
@@ -53,15 +48,10 @@ function readChallengeFromClientData(b64url: string): string | null {
 	}
 }
 
-export async function handleRegisterOptions(req: Request): Promise<Response> {
-	const body = await req.json();
+export async function handleRegisterOptions(): Promise<Response> {
 	const userHandle = await generateUserID();
-	const label = body.label?.trim() ? body.label.trim().slice(0, 64) : null;
-	const options = await buildRegistrationOptions(
-		userHandle,
-		label ?? "paddy user",
-	);
-	registrationChallenges.put(options.challenge, { userHandle, label });
+	const options = await buildRegistrationOptions(userHandle, "paddy user");
+	registrationChallenges.put(options.challenge, { userHandle });
 
 	return jsonResponse(options);
 }
@@ -102,11 +92,8 @@ export async function handleRegisterVerify(req: Request) {
 		credentialId: isoBase64URL.toBuffer(info.credential.id),
 		publicKey: info.credential.publicKey,
 		counter: info.credential.counter,
-		transports: info.credential.transports,
 		userHandle: pending.userHandle,
-		label: pending.label,
-		userAgent: req.headers.get("user-agent"),
-		ip: clientIpFrom(req),
+		label: nameForAaguid(info.aaguid),
 	});
 
 	return jsonResponse({ id, status: "pending" }, { status: 202 });
@@ -170,10 +157,6 @@ export async function handleLoginVerify(req: Request) {
 		);
 	}
 
-	const transports = cred.transports
-		? (JSON.parse(cred.transports) as AuthenticatorTransportFuture[])
-		: undefined;
-
 	const verification = await verifyAuthentication(
 		body.response,
 		clientChallenge,
@@ -181,7 +164,6 @@ export async function handleLoginVerify(req: Request) {
 			id: body.response.id,
 			publicKey: cred.public_key,
 			counter: cred.counter,
-			transports,
 		},
 		PORT,
 	);
