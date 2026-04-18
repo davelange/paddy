@@ -7,10 +7,9 @@ db.exec("PRAGMA foreign_keys = ON;");
 db.exec(`
 	CREATE TABLE IF NOT EXISTS credentials (
 		id              TEXT PRIMARY KEY,
-		credential_id   BLOB NOT NULL UNIQUE,
+		user_id			TEXT NOT NULL UNIQUE,
 		public_key      BLOB NOT NULL,
 		counter         INTEGER NOT NULL,
-		user_handle     BLOB NOT NULL,
 		label           TEXT NOT NULL,
 		status          TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
 		created_at      INTEGER NOT NULL,

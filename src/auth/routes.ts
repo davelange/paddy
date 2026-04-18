@@ -1,15 +1,13 @@
-import {
-	decodeClientDataJSON,
-	generateUserID,
-	isoBase64URL,
-} from "@simplewebauthn/server/helpers";
+import type {
+	AuthenticationResponseJSON,
+	RegistrationResponseJSON,
+} from "@simplewebauthn/server";
 import { PORT } from "../server/network";
 import { nameForAaguid } from "./aaguid";
 import { ChallengeStore } from "./challenges";
 import {
-	bumpCredentialCounter,
 	getCredentialById,
-	getCredentialByRawId,
+	getCredentialByUserId,
 	insertCredential,
 } from "./credentials";
 import {
@@ -25,10 +23,7 @@ import {
 	verifyRegistration,
 } from "./webauthn";
 
-const registrationChallenges = new ChallengeStore<{
-	userHandle: Uint8Array;
-}>();
-const authenticationChallenges = new ChallengeStore<true>();
+const challenges = new ChallengeStore();
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 	const headers = new Headers(init.headers);
@@ -40,46 +35,47 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 	});
 }
 
-function readChallengeFromClientData(b64url: string): string | null {
-	try {
-		return decodeClientDataJSON(b64url).challenge ?? null;
-	} catch {
-		return null;
-	}
-}
+export async function handleAuthOptions(): Promise<Response> {
+	const registration = await buildRegistrationOptions();
+	const authentication = await buildAuthenticationOptions(
+		registration.challenge,
+	);
 
-export async function handleRegisterOptions(): Promise<Response> {
-	const userHandle = await generateUserID();
-	const options = await buildRegistrationOptions(userHandle, "paddy user");
-	registrationChallenges.put(options.challenge, { userHandle });
+	challenges.put(registration.user.id, {
+		registrationChallenge: registration.challenge,
+		authenticationChallenge: authentication.challenge,
+	});
 
-	return jsonResponse(options);
+	console.log(challenges.store.entries());
+
+	return jsonResponse({
+		registration,
+		authentication,
+		id: registration.user.id,
+	});
 }
 
 export async function handleRegisterVerify(req: Request) {
 	const body = await req.json();
 
-	if (!body?.response) {
+	const { payload, id } = body as {
+		id: string;
+		payload: RegistrationResponseJSON;
+	};
+
+	if (!payload || !id) {
 		return jsonResponse({ error: "bad request" }, { status: 400 });
 	}
 
-	const clientChallenge = readChallengeFromClientData(
-		body.response.response.clientDataJSON,
-	);
+	const pendingChallenge = challenges.take(id);
 
-	if (!clientChallenge) {
-		return jsonResponse({ error: "bad challenge" }, { status: 400 });
-	}
-
-	const pending = registrationChallenges.take(clientChallenge);
-
-	if (!pending) {
+	if (!pendingChallenge) {
 		return jsonResponse({ error: "bad challenge" }, { status: 400 });
 	}
 
 	const verification = await verifyRegistration(
-		body.response,
-		clientChallenge,
+		payload,
+		pendingChallenge.registrationChallenge,
 		PORT,
 	);
 
@@ -88,15 +84,18 @@ export async function handleRegisterVerify(req: Request) {
 	}
 
 	const info = verification.registrationInfo;
-	const id = insertCredential({
-		credentialId: isoBase64URL.toBuffer(info.credential.id),
+
+	insertCredential({
+		userId: payload.rawId,
 		publicKey: info.credential.publicKey,
-		counter: info.credential.counter,
-		userHandle: pending.userHandle,
 		label: nameForAaguid(info.aaguid),
+		counter: info.credential.counter,
 	});
 
-	return jsonResponse({ id, status: "pending" }, { status: 202 });
+	return jsonResponse(
+		{ id: payload.rawId, status: "pending" },
+		{ status: 202 },
+	);
 }
 
 export function handleRegisterStatus(req: Request) {
@@ -115,40 +114,27 @@ export function handleRegisterStatus(req: Request) {
 	return jsonResponse({ status: cred.status });
 }
 
-export async function handleLoginOptions() {
-	const options = await buildAuthenticationOptions();
-	authenticationChallenges.put(options.challenge, true);
-
-	return jsonResponse(options);
-}
-
 export async function handleLoginVerify(req: Request) {
 	const body = await req.json();
 
-	if (!body?.response) {
+	const { payload, id } = body as {
+		payload: AuthenticationResponseJSON;
+		id: string;
+	};
+
+	if (!payload || !id) {
 		return jsonResponse({ error: "bad request" }, { status: 400 });
 	}
 
-	const clientChallenge = readChallengeFromClientData(
-		body.response.response.clientDataJSON,
-	);
+	const pendingChallenge = challenges.take(id);
 
-	if (!clientChallenge) {
+	if (!pendingChallenge) {
 		return jsonResponse(
 			{ error: "credential not recognized" },
 			{ status: 401 },
 		);
 	}
-	const pending = authenticationChallenges.take(clientChallenge);
-
-	if (!pending) {
-		return jsonResponse(
-			{ error: "credential not recognized" },
-			{ status: 401 },
-		);
-	}
-	const rawId = isoBase64URL.toBuffer(body.response.id);
-	const cred = getCredentialByRawId(rawId);
+	const cred = getCredentialByUserId(payload.rawId);
 
 	if (!cred || cred.status !== "approved") {
 		return jsonResponse(
@@ -158,10 +144,10 @@ export async function handleLoginVerify(req: Request) {
 	}
 
 	const verification = await verifyAuthentication(
-		body.response,
-		clientChallenge,
+		body.payload,
+		pendingChallenge.authenticationChallenge,
 		{
-			id: body.response.id,
+			id: payload.id,
 			publicKey: cred.public_key,
 			counter: cred.counter,
 		},
@@ -175,7 +161,6 @@ export async function handleLoginVerify(req: Request) {
 		);
 	}
 
-	bumpCredentialCounter(cred.id, verification.authenticationInfo.newCounter);
 	const { cookie } = createSession(cred.id);
 
 	return jsonResponse({ ok: true }, { headers: { "Set-Cookie": cookie } });

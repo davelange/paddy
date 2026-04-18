@@ -5,10 +5,9 @@ export type CredentialStatus = "pending" | "approved" | "rejected";
 
 export type CredentialRow = {
 	id: string;
-	credential_id: Uint8Array;
+	user_id: string;
 	public_key: Uint8Array;
 	counter: number;
-	user_handle: Uint8Array;
 	label: string;
 	status: CredentialStatus;
 	created_at: number;
@@ -17,26 +16,17 @@ export type CredentialRow = {
 };
 
 export function insertCredential(row: {
-	credentialId: Uint8Array;
+	userId: string;
 	publicKey: Uint8Array;
 	counter: number;
-	userHandle: Uint8Array;
 	label: string;
 }) {
 	const id = randomUUIDv7();
 	db.query(
 		`INSERT INTO credentials
-			(id, credential_id, public_key, counter, user_handle, label, status, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
-	).run(
-		id,
-		row.credentialId,
-		row.publicKey,
-		row.counter,
-		row.userHandle,
-		row.label,
-		Date.now(),
-	);
+			(id, user_id, public_key, counter, label, status, created_at)
+			VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
+	).run(id, row.userId, row.publicKey, row.counter, row.label, Date.now());
 
 	return id;
 }
@@ -49,10 +39,10 @@ export function getCredentialById(id: string) {
 	);
 }
 
-export function getCredentialByRawId(credentialId: Uint8Array) {
+export function getCredentialByUserId(credentialId: string) {
 	return (
 		(db
-			.query("SELECT * FROM credentials WHERE credential_id = ?")
+			.query("SELECT * FROM credentials WHERE user_id = ?")
 			.get(credentialId) as CredentialRow | null) ?? null
 	);
 }
@@ -80,12 +70,6 @@ export function setCredentialStatus(id: string, status: CredentialStatus) {
 		.run(status, approvedAt, id);
 
 	return res.changes > 0;
-}
-
-export function bumpCredentialCounter(id: string, counter: number) {
-	db.query(
-		`UPDATE credentials SET counter = ?, last_used_at = ? WHERE id = ?`,
-	).run(counter, Date.now(), id);
 }
 
 export function deleteCredential(id: string) {

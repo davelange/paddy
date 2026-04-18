@@ -1,28 +1,24 @@
-import type {
-	AuthenticationResponseJSON,
-	PublicKeyCredentialCreationOptionsJSON,
-	PublicKeyCredentialRequestOptionsJSON,
-	RegistrationResponseJSON,
-} from "@simplewebauthn/server";
 import {
+	type AuthenticationResponseJSON,
 	generateAuthenticationOptions,
 	generateRegistrationOptions,
+	type RegistrationResponseJSON,
 	verifyAuthenticationResponse,
 	verifyRegistrationResponse,
 } from "@simplewebauthn/server";
+import { generateUserID } from "@simplewebauthn/server/helpers";
 import { getOrigin, getRpId } from "../server/network";
 
 const RP_NAME = "paddy";
 
-export async function buildRegistrationOptions(
-	userHandle: Uint8Array,
-	userName: string,
-): Promise<PublicKeyCredentialCreationOptionsJSON> {
+export async function buildRegistrationOptions() {
+	const userID = await generateUserID();
+
 	return generateRegistrationOptions({
 		rpName: RP_NAME,
 		rpID: getRpId(),
-		userName,
-		userID: userHandle.slice(),
+		userName: "paddy device",
+		userID,
 		attestationType: "none",
 		authenticatorSelection: {
 			residentKey: "required",
@@ -45,10 +41,11 @@ export async function verifyRegistration(
 	});
 }
 
-export async function buildAuthenticationOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
+export async function buildAuthenticationOptions(challenge: string) {
 	return generateAuthenticationOptions({
 		rpID: getRpId(),
 		userVerification: "preferred",
+		challenge,
 	});
 }
 

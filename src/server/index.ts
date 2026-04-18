@@ -1,8 +1,7 @@
 import {
-	handleLoginOptions,
+	handleAuthOptions,
 	handleLoginVerify,
 	handleLogout,
-	handleRegisterOptions,
 	handleRegisterStatus,
 	handleRegisterVerify,
 } from "../auth/routes";
@@ -74,10 +73,9 @@ const server = Bun.serve<WsData, never>({
 	tls: { cert, key },
 	routes: {
 		"/": index,
-		"/register/options": { POST: handleRegisterOptions },
+		"/auth/options": { POST: handleAuthOptions },
 		"/register/verify": { POST: handleRegisterVerify },
 		"/register/status": { GET: handleRegisterStatus },
-		"/login/options": { POST: handleLoginOptions },
 		"/login/verify": { POST: handleLoginVerify },
 		"/logout": { POST: handleLogout },
 		"/ws": handleWsUpgrade,

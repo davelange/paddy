@@ -1,9 +1,12 @@
 const TTL_MS = 5 * 60 * 1000;
 
-type Entry<T> = { challenge: string; data: T; expires: number };
-
-export class ChallengeStore<T> {
-	private store = new Map<string, Entry<T>>();
+type Entry = {
+	authenticationChallenge: string;
+	registrationChallenge: string;
+	expires: number;
+};
+export class ChallengeStore {
+	store = new Map<string, Entry>();
 
 	private sweep(now: number): void {
 		for (const [key, entry] of this.store) {
@@ -11,13 +14,12 @@ export class ChallengeStore<T> {
 		}
 	}
 
-	put(challenge: string, data: T) {
+	put(id: string, data: Omit<Entry, "expires">) {
 		const now = Date.now();
 		this.sweep(now);
-		this.store.set(challenge, { challenge, data, expires: now + TTL_MS });
+		this.store.set(id, { ...data, expires: now + TTL_MS });
 	}
-
-	take(challenge: string): T | null {
+	take(challenge: string): Entry | null {
 		const now = Date.now();
 		this.sweep(now);
 		const entry = this.store.get(challenge);
@@ -32,6 +34,6 @@ export class ChallengeStore<T> {
 			return null;
 		}
 
-		return entry.data;
+		return entry;
 	}
 }

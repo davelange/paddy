@@ -19,13 +19,25 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
 	return res.json() as Promise<T>;
 }
 
+export type AuthOptions = {
+	registration: PublicKeyCredentialCreationOptionsJSON;
+	authentication: PublicKeyCredentialRequestOptionsJSON;
+	id: string;
+};
+
 export const api = {
-	registerOptions(): Promise<PublicKeyCredentialCreationOptionsJSON> {
-		return postJson("/register/options");
+	authOptions(): Promise<AuthOptions> {
+		return postJson("/auth/options");
 	},
 
-	registerVerify(response: RegistrationResponseJSON): Promise<{ id: string }> {
-		return postJson("/register/verify", { response });
+	registerVerify({
+		id,
+		payload,
+	}: {
+		id: string;
+		payload: RegistrationResponseJSON;
+	}): Promise<{ id: string }> {
+		return postJson("/register/verify", { id, payload });
 	},
 
 	async registerStatus(id: string): Promise<{ status: string } | null> {
@@ -34,11 +46,13 @@ export const api = {
 		return res.json() as Promise<{ status: string }>;
 	},
 
-	loginOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
-		return postJson("/login/options");
-	},
-
-	loginVerify(response: AuthenticationResponseJSON): Promise<unknown> {
-		return postJson("/login/verify", { response });
+	loginVerify({
+		id,
+		payload,
+	}: {
+		id: string;
+		payload: AuthenticationResponseJSON;
+	}): Promise<unknown> {
+		return postJson("/login/verify", { id, payload });
 	},
 };
