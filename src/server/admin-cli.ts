@@ -31,7 +31,10 @@ function printRows(rows: CredentialRow[], numbered = false): void {
 		: ["ID", "STATUS", "LABEL", "CREATED"];
 	console.log(header.join("\t"));
 	for (let i = 0; i < rows.length; i++) {
-		const r = rows[i]!;
+		const r = rows[i];
+
+		if (!r) continue;
+
 		const cols = numbered
 			? [String(i + 1), shortId(r.id), r.label, fmtTime(r.created_at)]
 			: [shortId(r.id), r.status, r.label, fmtTime(r.created_at)];

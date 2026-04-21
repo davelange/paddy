@@ -42,9 +42,9 @@ export const api = {
 	},
 
 	async getRegisterStatus(id: string): Promise<CredentialStatus | null> {
-		const res = await fetch(
-			`/register/status?id=${encodeURIComponent(id)}`,
-		).catch((err) => console.log(err));
+		const res = await fetch(`/auth/status?id=${encodeURIComponent(id)}`).catch(
+			(err) => console.log(err),
+		);
 
 		if (!res?.ok) return null;
 

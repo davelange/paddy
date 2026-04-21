@@ -5,7 +5,8 @@ type Entry = {
 	registrationChallenge: string;
 	expires: number;
 };
-export class ChallengeStore {
+
+class ChallengeStore {
 	store = new Map<string, Entry>();
 
 	private sweep(now: number): void {
@@ -41,3 +42,5 @@ export class ChallengeStore {
 		return entry;
 	}
 }
+
+export const challenges = new ChallengeStore();

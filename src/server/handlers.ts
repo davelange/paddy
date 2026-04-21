@@ -2,28 +2,81 @@ import type {
 	AuthenticationResponseJSON,
 	RegistrationResponseJSON,
 } from "@simplewebauthn/server";
-import { PORT } from "../server/network";
-import { nameForAaguid } from "./aaguid";
-import { ChallengeStore } from "./challenges";
-import {
-	getCredentialById,
-	getCredentialByUserId,
-	insertCredential,
-} from "./credentials";
+import { nameForAaguid } from "../auth/aaguid";
+import { challenges } from "../auth/challenges";
+import { getCredentialByUserId, insertCredential } from "../auth/credentials";
 import {
 	CLEAR_COOKIE,
 	createSession,
+	getSession,
 	readSidFromCookie,
 	revokeSession,
-} from "./session";
+} from "../auth/session";
 import {
 	buildAuthenticationOptions,
 	buildRegistrationOptions,
 	verifyAuthentication,
 	verifyRegistration,
-} from "./webauthn";
+} from "../auth/webauthn";
+import {
+	createKeyEvent,
+	createScrollEvent,
+	createZoomEvent,
+	kVK_LeftArrow,
+	kVK_RightArrow,
+} from "./emit";
+import { PORT } from "./network";
 
-const challenges = new ChallengeStore();
+type WsData = { credentialId: string };
+
+export function handleWsUpgrade(
+	req: Request,
+	server: Bun.Server<WsData>,
+): Response | undefined {
+	const sid = readSidFromCookie(req.headers.get("cookie"));
+	const session = getSession(sid);
+
+	if (!session) {
+		return new Response("unauthorized", { status: 401 });
+	}
+
+	if (server.upgrade(req, { data: { credentialId: session.credentialId } })) {
+		return;
+	}
+
+	return new Response("upgrade failed", { status: 400 });
+}
+
+export function handleWsMessage(
+	_ws: Bun.ServerWebSocket<WsData>,
+	raw: string | Buffer,
+): void {
+	try {
+		const msg = JSON.parse(typeof raw === "string" ? raw : raw.toString());
+
+		switch (msg.type) {
+			case "scroll":
+				createScrollEvent(msg.dy, msg.dx);
+				break;
+
+			case "pinch":
+				createZoomEvent(-msg.y);
+				break;
+
+			case "scrub":
+				createKeyEvent(
+					msg.direction === "forward" ? kVK_RightArrow : kVK_LeftArrow,
+				);
+				break;
+
+			default:
+				console.log(msg);
+				break;
+		}
+	} catch (e) {
+		console.log("bad msg:", e);
+	}
+}
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 	const headers = new Headers(init.headers);
@@ -35,7 +88,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 	});
 }
 
-export async function handleAuthOptions(): Promise<Response> {
+export async function createAuthOptions(): Promise<Response> {
 	const registration = await buildRegistrationOptions();
 	const authentication = await buildAuthenticationOptions(
 		registration.challenge,
@@ -53,7 +106,7 @@ export async function handleAuthOptions(): Promise<Response> {
 	});
 }
 
-export async function handleRegisterVerify(req: Request) {
+export async function handleRegisterVerication(req: Request) {
 	const body = await req.json();
 
 	const { payload, challengeId } = body as {
@@ -66,6 +119,9 @@ export async function handleRegisterVerify(req: Request) {
 	}
 
 	const pendingChallenge = challenges.take(challengeId);
+
+	console.log("handleRegisterVerication");
+	console.log({ payload, challengeId, pendingChallenge });
 
 	if (!pendingChallenge) {
 		return jsonResponse({ error: "bad challenge" }, { status: 400 });
@@ -96,7 +152,7 @@ export async function handleRegisterVerify(req: Request) {
 	);
 }
 
-export function handleRegisterStatus(req: Request) {
+export function getUserStatus(req: Request) {
 	const id = new URL(req.url).searchParams.get("id");
 
 	if (!id) {
@@ -112,7 +168,7 @@ export function handleRegisterStatus(req: Request) {
 	return jsonResponse({ status: cred.status });
 }
 
-export async function handleLoginVerify(req: Request) {
+export async function handleLoginVerication(req: Request) {
 	const body = await req.json();
 
 	const { payload, challengeId } = body as {
@@ -121,6 +177,9 @@ export async function handleLoginVerify(req: Request) {
 	};
 
 	const pendingChallenge = challenges.take(challengeId);
+
+	console.log("handleLoginVerication");
+	console.log({ payload, challengeId, pendingChallenge });
 
 	if (!pendingChallenge) {
 		return jsonResponse({ error: "challenge not recognized" }, { status: 401 });
