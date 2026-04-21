@@ -1,3 +1,17 @@
+:root {
+	--bg: #0e0e10;
+	--text: #e8e6e0;
+	--muted: #6a6863;
+	--line: rgba(232, 230, 224, 0.14);
+	--mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
 html,
 body {
 	margin: 0;
@@ -7,15 +21,16 @@ body {
 }
 
 body {
-	font-family: system-ui, sans-serif;
-	background: #111;
-	color: #eee;
+	font-family: var(--mono);
+	background: var(--bg);
+	color: var(--text);
+	font-size: 14px;
 	user-select: none;
 	-webkit-user-select: none;
+	-webkit-font-smoothing: antialiased;
 }
 
 #app {
-	min-height: 100%;
-	display: grid;
-	place-items: center;
+	min-height: 100dvh;
+	position: relative;
 }

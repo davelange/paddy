@@ -120,9 +120,6 @@ export async function handleRegisterVerication(req: Request) {
 
 	const pendingChallenge = challenges.take(challengeId);
 
-	console.log("handleRegisterVerication");
-	console.log({ payload, challengeId, pendingChallenge });
-
 	if (!pendingChallenge) {
 		return jsonResponse({ error: "bad challenge" }, { status: 400 });
 	}
@@ -177,9 +174,6 @@ export async function handleLoginVerication(req: Request) {
 	};
 
 	const pendingChallenge = challenges.take(challengeId);
-
-	console.log("handleLoginVerication");
-	console.log({ payload, challengeId, pendingChallenge });
 
 	if (!pendingChallenge) {
 		return jsonResponse({ error: "challenge not recognized" }, { status: 401 });

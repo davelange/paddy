@@ -39,8 +39,7 @@
 </script>
 
 <div class="surface">
-	<h1>paddy</h1>
-	<div class="status">{status}</div>
+	<p class="status">{status}</p>
 </div>
 
 <div class="scrub">
@@ -58,16 +57,26 @@
 
 <style>
 	.surface {
-		text-align: center;
+		position: fixed;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		pointer-events: none;
 	}
 	h1 {
 		margin: 0;
+		font-size: 40px;
 		font-weight: 500;
+		letter-spacing: -0.03em;
 	}
 	.status {
-		margin-top: 8px;
-		opacity: 0.5;
-		font-size: 13px;
+		margin: 0;
+		color: var(--muted);
+		font-size: 12px;
+		letter-spacing: 0.08em;
 		min-height: 1em;
 	}
 	.scrub {
@@ -76,23 +85,22 @@
 		right: 0;
 		bottom: 0;
 		display: flex;
-		gap: 2px;
-		padding: 8px;
-		padding-bottom: max(8px, env(safe-area-inset-bottom));
-		box-sizing: border-box;
+		gap: 8px;
+		padding: 10px;
+		padding-bottom: max(10px, env(safe-area-inset-bottom));
 	}
 	.scrub button {
 		flex: 1;
 		height: 64px;
-		font-size: 32px;
-		color: #eee;
-		background: rgba(255, 255, 255, 0.08);
-		border: 1px solid rgba(255, 255, 255, 0.12);
-		border-radius: 12px;
+		font-size: 28px;
+		color: var(--text);
+		background: transparent;
+		border: 1px solid var(--line);
+		border-radius: 6px;
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 	}
 	.scrub button:active {
-		background: rgba(255, 255, 255, 0.2);
+		background: rgba(255, 255, 255, 0.05);
 	}
 </style>
