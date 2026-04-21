@@ -60,7 +60,7 @@ export function handleWsMessage(
 				break;
 
 			case "pinch":
-				createZoomEvent(-msg.y);
+				createZoomEvent(msg.delta);
 				break;
 
 			case "scrub":

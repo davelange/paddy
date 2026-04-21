@@ -14,8 +14,8 @@
 		});
 
 		const gestures = new GestureManager({
-			onPinch({ x, y }) {
-				ws?.push({ type: "pinch", x, y });
+			onPinch(delta) {
+				ws?.push({ type: "pinch", delta });
 			},
 			onScroll({ x, y }) {
 				ws?.push({ type: "scroll", dx: x, dy: y });

@@ -70,6 +70,13 @@ function withEvent(
 	}
 }
 
+/* 
+	1. Create event
+	2. Configure params
+	3. Post event
+	4. Release
+*/
+
 export function createScrollEvent(dy: number, dx: number) {
 	withEvent(
 		() =>
