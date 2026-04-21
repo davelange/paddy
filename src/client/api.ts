@@ -4,6 +4,7 @@ import type {
 	PublicKeyCredentialRequestOptionsJSON,
 	RegistrationResponseJSON,
 } from "@simplewebauthn/browser";
+import type { CredentialStatus } from "../auth/credentials";
 
 async function postJson<T>(path: string, body?: unknown): Promise<T> {
 	const res = await fetch(path, {
@@ -22,7 +23,7 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
 export type AuthOptions = {
 	registration: PublicKeyCredentialCreationOptionsJSON;
 	authentication: PublicKeyCredentialRequestOptionsJSON;
-	id: string;
+	challengeId: string;
 };
 
 export const api = {
@@ -31,28 +32,34 @@ export const api = {
 	},
 
 	registerVerify({
-		id,
+		challengeId,
 		payload,
 	}: {
-		id: string;
+		challengeId: string;
 		payload: RegistrationResponseJSON;
 	}): Promise<{ id: string }> {
-		return postJson("/register/verify", { id, payload });
+		return postJson("/register/verify", { challengeId, payload });
 	},
 
-	async registerStatus(id: string): Promise<{ status: string } | null> {
-		const res = await fetch(`/register/status?id=${encodeURIComponent(id)}`);
-		if (!res.ok) return null;
-		return res.json() as Promise<{ status: string }>;
+	async getRegisterStatus(id: string): Promise<CredentialStatus | null> {
+		const res = await fetch(
+			`/register/status?id=${encodeURIComponent(id)}`,
+		).catch((err) => console.log(err));
+
+		if (!res?.ok) return null;
+
+		const data = await res.json();
+
+		return (await data).status;
 	},
 
 	loginVerify({
-		id,
+		challengeId,
 		payload,
 	}: {
-		id: string;
+		challengeId: string;
 		payload: AuthenticationResponseJSON;
 	}): Promise<unknown> {
-		return postJson("/login/verify", { id, payload });
+		return postJson("/login/verify", { challengeId, payload });
 	},
 };

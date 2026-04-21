@@ -19,7 +19,11 @@ export class ChallengeStore {
 		this.sweep(now);
 		this.store.set(id, { ...data, expires: now + TTL_MS });
 	}
-	take(challenge: string): Entry | null {
+	take(challenge?: string): Entry | null {
+		if (!challenge) {
+			return null;
+		}
+
 		const now = Date.now();
 		this.sweep(now);
 		const entry = this.store.get(challenge);

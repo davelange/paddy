@@ -46,28 +46,26 @@ export async function handleAuthOptions(): Promise<Response> {
 		authenticationChallenge: authentication.challenge,
 	});
 
-	console.log(challenges.store.entries());
-
 	return jsonResponse({
 		registration,
 		authentication,
-		id: registration.user.id,
+		challengeId: registration.user.id,
 	});
 }
 
 export async function handleRegisterVerify(req: Request) {
 	const body = await req.json();
 
-	const { payload, id } = body as {
-		id: string;
+	const { payload, challengeId } = body as {
+		challengeId: string;
 		payload: RegistrationResponseJSON;
 	};
 
-	if (!payload || !id) {
+	if (!payload || !challengeId) {
 		return jsonResponse({ error: "bad request" }, { status: 400 });
 	}
 
-	const pendingChallenge = challenges.take(id);
+	const pendingChallenge = challenges.take(challengeId);
 
 	if (!pendingChallenge) {
 		return jsonResponse({ error: "bad challenge" }, { status: 400 });
@@ -105,7 +103,7 @@ export function handleRegisterStatus(req: Request) {
 		return jsonResponse({ error: "missing id" }, { status: 400 });
 	}
 
-	const cred = getCredentialById(id);
+	const cred = getCredentialByUserId(id);
 
 	if (!cred) {
 		return jsonResponse({ error: "not found" }, { status: 404 });
@@ -117,23 +115,17 @@ export function handleRegisterStatus(req: Request) {
 export async function handleLoginVerify(req: Request) {
 	const body = await req.json();
 
-	const { payload, id } = body as {
+	const { payload, challengeId } = body as {
 		payload: AuthenticationResponseJSON;
-		id: string;
+		challengeId: string;
 	};
 
-	if (!payload || !id) {
-		return jsonResponse({ error: "bad request" }, { status: 400 });
-	}
-
-	const pendingChallenge = challenges.take(id);
+	const pendingChallenge = challenges.take(challengeId);
 
 	if (!pendingChallenge) {
-		return jsonResponse(
-			{ error: "credential not recognized" },
-			{ status: 401 },
-		);
+		return jsonResponse({ error: "challenge not recognized" }, { status: 401 });
 	}
+
 	const cred = getCredentialByUserId(payload.rawId);
 
 	if (!cred || cred.status !== "approved") {

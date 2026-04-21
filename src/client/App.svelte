@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Auth from "./Auth.svelte";
+	import AuthScreen from "./AuthScreen.svelte";
 	import Controller from "./Controller.svelte";
 
 	let authed = $state(false);
@@ -8,5 +8,5 @@
 {#if authed}
 	<Controller />
 {:else}
-	<Auth onAuthed={() => (authed = true)} />
+	<AuthScreen onAuthed={() => (authed = true)} />
 {/if}
