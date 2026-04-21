@@ -1,4 +1,5 @@
 import index from "../client/index.html";
+import { unloadFFI } from "./emit";
 import {
 	createAuthOptions,
 	getUserStatus,
@@ -42,6 +43,7 @@ printQr(url);
 const shutdown = () => {
 	console.log("\nShutting down");
 	server.stop(true);
+	unloadFFI();
 	process.exit(0);
 };
 process.on("SIGINT", shutdown);

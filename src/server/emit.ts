@@ -153,3 +153,7 @@ export function createZoomEvent(delta: number) {
 		},
 	);
 }
+
+export function unloadFFI() {
+	lib.close();
+}
