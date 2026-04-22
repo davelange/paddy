@@ -39,6 +39,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 .playwright-mcp
 
-*.db
-*.db-shm
-*.db-wal
+paddy.db
+paddy.db-shm
+paddy.db-wal

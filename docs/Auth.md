@@ -112,7 +112,7 @@ Discoverable credentials (resident keys, `residentKey: 'required'`) so login doe
    - `bun run admin approve <id>` → row flips to approved.
    - Phone (which is polling `/register/status` once or on retry) progresses to login.
 5. **Login + use**
-   - Phone shows login button → tap → biometric → cookie set → controller UI mounts → WS connects → scroll/pinch/scrub all drive the Mac.
+   - Phone shows login button → tap → biometric → cookie set → controller UI mounts → WS connects → scroll/pinch/arrow-keys all drive the Mac.
    - In server log, `[ws] open` line includes the credential ID.
 6. **Negative checks**
    - Open `wss://paddy.local:8080/ws` directly with no cookie (e.g. `bunx wscat`) → 401.

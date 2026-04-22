@@ -14,7 +14,7 @@ Access is gated by a WebAuthn passkey. New devices register once, then an admin 
 ```
 
 - **Server** (`src/server`) — `Bun.serve` with TLS, WebAuthn routes, and a WS endpoint gated by an HttpOnly session cookie. On startup it prints the LAN URL and a terminal QR code.
-- **Client** (`src/client`) — Svelte controller page with a gesture layer. One-finger drag = scroll, two-finger pinch = zoom, scrub = arrow keys.
+- **Client** (`src/client`) — Svelte controller page with a gesture layer. One-finger drag = scroll, two-finger pinch = zoom, on-screen buttons send arrow keys.
 - **Emit** (`src/server/emit.ts`) — `bun:ffi` bindings to `CoreGraphics` for scroll, keyboard, and cmd-scroll (zoom) events.
 - **Auth** (`src/auth`) — `@simplewebauthn/server` + `bun:sqlite`. Credentials land as `pending` until the admin CLI approves them.
 
@@ -87,7 +87,7 @@ WS messages (phone → server):
 ```jsonc
 { "type": "scroll", "dx": <number>, "dy": <number> }
 { "type": "pinch",  "delta": <number> }
-{ "type": "scrub",  "direction": "forward" | "back" }
+{ "type": "key",    "key": "RightArrow" | "LeftArrow" }
 ```
 
 ## Scripts

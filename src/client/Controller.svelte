@@ -29,11 +29,11 @@
 		};
 	});
 
-	function scrub(direction: "back" | "forward") {
+	function key(key: "LeftArrow" | "RightArrow") {
 		return (e: PointerEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
-			ws?.push({ type: "scrub", direction });
+			ws?.push({ type: "key", key });
 		};
 	}
 </script>
@@ -42,14 +42,18 @@
 	<p class="status">{status}</p>
 </div>
 
-<div class="scrub">
-	<button type="button" aria-label="Scrub back" onpointerdown={scrub("back")}>
+<div class="keys">
+	<button
+		type="button"
+		aria-label="Left arrow"
+		onpointerdown={key("LeftArrow")}
+	>
 		‹
 	</button>
 	<button
 		type="button"
-		aria-label="Scrub forward"
-		onpointerdown={scrub("forward")}
+		aria-label="Right arrow"
+		onpointerdown={key("RightArrow")}
 	>
 		›
 	</button>
@@ -79,7 +83,7 @@
 		letter-spacing: 0.08em;
 		min-height: 1em;
 	}
-	.scrub {
+	.keys {
 		position: fixed;
 		left: 0;
 		right: 0;
@@ -89,7 +93,7 @@
 		padding: 10px;
 		padding-bottom: max(10px, env(safe-area-inset-bottom));
 	}
-	.scrub button {
+	.keys button {
 		flex: 1;
 		height: 64px;
 		font-size: 28px;
@@ -100,7 +104,7 @@
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 	}
-	.scrub button:active {
+	.keys button:active {
 		background: rgba(255, 255, 255, 0.05);
 	}
 </style>
