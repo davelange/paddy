@@ -175,9 +175,6 @@ export async function handleLoginVerication(req: Request) {
 
 	const pendingChallenge = challenges.take(challengeId);
 
-	console.log(payload.rawId);
-	console.log(pendingChallenge);
-
 	if (!pendingChallenge) {
 		return jsonResponse({ error: "challenge not recognized" }, { status: 401 });
 	}
