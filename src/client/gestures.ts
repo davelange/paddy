@@ -53,7 +53,7 @@ export class GestureManager {
 
 	private centroidX = 0;
 	private centroidY = 0;
-	private prevPinchDistance: number | null = null;
+	private prevPinchDistance = 0;
 	private smoothedPinch = 0;
 	private twoFingerMode: TwoFingerMode = "undecided";
 
@@ -124,12 +124,6 @@ export class GestureManager {
 	private handleUp(ev: PointerEvent) {
 		this.pointers.delete(ev.pointerId);
 
-		if (this.pointers.size < 2) {
-			this.prevPinchDistance = null;
-			this.smoothedPinch = 0;
-			this.twoFingerMode = "undecided";
-		}
-
 		if (this.pointers.size > 0) return;
 
 		const elapsed = performance.now() - this.gestureStartTime;
@@ -186,8 +180,7 @@ export class GestureManager {
 		this.centroidY = newCentroidY;
 
 		const newDist = Math.hypot(a.x - b.x, a.y - b.y);
-		const dPinch =
-			this.prevPinchDistance === null ? 0 : newDist - this.prevPinchDistance;
+		const dPinch = newDist - this.prevPinchDistance;
 		this.prevPinchDistance = newDist;
 
 		if (this.twoFingerMode === "undecided") {
@@ -212,14 +205,12 @@ export class GestureManager {
 			const s = VELOCITY_SMOOTHING;
 			this.velocity.x = s * (dCx / dt) + (1 - s) * this.velocity.x;
 			this.velocity.y = s * (dCy / dt) + (1 - s) * this.velocity.y;
-			return;
-		}
-
-		// pinch
-		this.smoothedPinch =
-			PINCH_SMOOTHING * dPinch + (1 - PINCH_SMOOTHING) * this.smoothedPinch;
-		if (Math.abs(this.smoothedPinch) > PINCH_DEAD_ZONE) {
-			this.onPinch(this.smoothedPinch);
+		} else {
+			this.smoothedPinch =
+				PINCH_SMOOTHING * dPinch + (1 - PINCH_SMOOTHING) * this.smoothedPinch;
+			if (Math.abs(this.smoothedPinch) > PINCH_DEAD_ZONE) {
+				this.onPinch(this.smoothedPinch);
+			}
 		}
 	}
 
