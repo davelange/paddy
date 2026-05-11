@@ -4,7 +4,6 @@
 	import { WSConnection } from "./ws";
 
 	let status = $state("");
-	let mode = $state<"trackpad" | "mouse">("trackpad");
 	let ws: WSConnection | undefined;
 
 	onMount(() => {
@@ -15,24 +14,17 @@
 		});
 
 		const gestures = new GestureManager({
-			getMode: () => mode,
-			onPinch(delta) {
-				ws?.push({ type: "pinch", delta });
-			},
 			onScroll({ x, y }) {
 				ws?.push({ type: "scroll", dx: x, dy: y });
+			},
+			onPinch(delta) {
+				ws?.push({ type: "pinch", delta });
 			},
 			onMove({ x, y }) {
 				ws?.push({ type: "mousemove", dx: x, dy: y });
 			},
 			onClick(button) {
 				ws?.push({ type: "mouseclick", button });
-			},
-			onMouseDown(button) {
-				ws?.push({ type: "mousebutton", button, action: "down" });
-			},
-			onMouseUp(button) {
-				ws?.push({ type: "mousebutton", button, action: "up" });
 			},
 		});
 
@@ -42,50 +34,10 @@
 			ws = undefined;
 		};
 	});
-
-	function toggleMode(e: PointerEvent) {
-		e.preventDefault();
-		e.stopPropagation();
-		mode = mode === "trackpad" ? "mouse" : "trackpad";
-	}
-
-	function key(key: "LeftArrow" | "RightArrow") {
-		return (e: PointerEvent) => {
-			e.preventDefault();
-			e.stopPropagation();
-			ws?.push({ type: "key", key });
-		};
-	}
 </script>
-
-<button
-	type="button"
-	class="mode-toggle"
-	aria-label="Toggle mode"
-	onpointerdown={toggleMode}
->
-	{mode === "trackpad" ? "TRACKPAD" : "MOUSE"}
-</button>
 
 <div class="surface">
 	<p class="status">{status}</p>
-</div>
-
-<div class="keys">
-	<button
-		type="button"
-		aria-label="Left arrow"
-		onpointerdown={key("LeftArrow")}
-	>
-		‹
-	</button>
-	<button
-		type="button"
-		aria-label="Right arrow"
-		onpointerdown={key("RightArrow")}
-	>
-		›
-	</button>
 </div>
 
 <style>
@@ -99,60 +51,11 @@
 		gap: 8px;
 		pointer-events: none;
 	}
-	h1 {
-		margin: 0;
-		font-size: 40px;
-		font-weight: 500;
-		letter-spacing: -0.03em;
-	}
 	.status {
 		margin: 0;
 		color: var(--muted);
 		font-size: 12px;
 		letter-spacing: 0.08em;
 		min-height: 1em;
-	}
-	.keys {
-		position: fixed;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		display: flex;
-		gap: 8px;
-		padding: 10px;
-		padding-bottom: max(10px, env(safe-area-inset-bottom));
-	}
-	.keys button {
-		flex: 1;
-		height: 64px;
-		font-size: 28px;
-		color: var(--text);
-		background: transparent;
-		border: 1px solid var(--line);
-		border-radius: 6px;
-		touch-action: manipulation;
-		-webkit-tap-highlight-color: transparent;
-	}
-	.keys button:active {
-		background: rgba(255, 255, 255, 0.05);
-	}
-	.mode-toggle {
-		position: fixed;
-		top: max(10px, env(safe-area-inset-top));
-		right: max(10px, env(safe-area-inset-right));
-		padding: 6px 10px;
-		font: inherit;
-		font-size: 11px;
-		letter-spacing: 0.08em;
-		color: var(--muted);
-		background: transparent;
-		border: 1px solid var(--line);
-		border-radius: 6px;
-		touch-action: manipulation;
-		-webkit-tap-highlight-color: transparent;
-		z-index: 2;
-	}
-	.mode-toggle:active {
-		background: rgba(255, 255, 255, 0.05);
 	}
 </style>

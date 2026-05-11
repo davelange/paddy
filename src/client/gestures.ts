@@ -7,22 +7,17 @@ type TouchTrack = {
 	x: number;
 	y: number;
 	time: number;
+	startX: number;
+	startY: number;
 };
 
-export type Mode = "trackpad" | "mouse";
-
 type Options = {
-	getMode: () => Mode;
 	onScroll: (delta: Coord) => void;
 	onPinch: (delta: number) => void;
 	onMove: (delta: Coord) => void;
 	onClick: (button: "left" | "right") => void;
-	onMouseDown: (button: "left" | "right") => void;
-	onMouseUp: (button: "left" | "right") => void;
 };
 
-const PINCH_SMOOTHING = 0.35;
-const PINCH_DEAD_ZONE = 0.1;
 const VELOCITY_SMOOTHING = 0.25;
 const MOMENTUM_FRICTION = 0.93;
 const MOMENTUM_MIN_SPEED = 0.02;
@@ -30,21 +25,24 @@ const FRAME_MS = 16;
 
 const TAP_MAX_MS = 250;
 const TAP_MAX_TRAVEL = 5;
-const LONG_PRESS_MS = 400;
 const MOUSE_SENSITIVITY = 1.5;
+
+const PINCH_SMOOTHING = 0.35;
+const PINCH_DEAD_ZONE = 0.5;
+
+// Once both fingers have travelled at least COMMIT_THRESHOLD px from where the
+// 2-finger gesture began, we commit by sign(a·b): aligned vectors = scroll,
+// opposed vectors = pinch.
+const COMMIT_THRESHOLD = 5;
+
+type TwoFingerMode = "undecided" | "scroll" | "pinch";
 
 export class GestureManager {
 	private pointers = new Map<number, TouchTrack>();
-	private getMode: Options["getMode"];
 	private onScroll: Options["onScroll"];
 	private onPinch: Options["onPinch"];
 	private onMove: Options["onMove"];
 	private onClick: Options["onClick"];
-	private onMouseDown: Options["onMouseDown"];
-	private onMouseUp: Options["onMouseUp"];
-
-	private prevPinchDistance: number | null = null;
-	private smoothedPinch = 0;
 
 	private velocity: Coord = { x: 0, y: 0 };
 	private momentumRAF: number | null = null;
@@ -52,21 +50,22 @@ export class GestureManager {
 	private gestureStartTime = 0;
 	private gestureTravel = 0;
 	private hadTwoFingers = false;
-	private longPressTimer: ReturnType<typeof setTimeout> | null = null;
-	private dragClickActive = false;
+
+	private centroidX = 0;
+	private centroidY = 0;
+	private prevPinchDistance: number | null = null;
+	private smoothedPinch = 0;
+	private twoFingerMode: TwoFingerMode = "undecided";
 
 	private down = (e: PointerEvent) => this.handleDown(e);
 	private up = (e: PointerEvent) => this.handleUp(e);
 	private move = (e: PointerEvent) => this.handleMove(e);
 
 	constructor(options: Options) {
-		this.getMode = options.getMode;
 		this.onScroll = options.onScroll;
 		this.onPinch = options.onPinch;
 		this.onMove = options.onMove;
 		this.onClick = options.onClick;
-		this.onMouseDown = options.onMouseDown;
-		this.onMouseUp = options.onMouseUp;
 
 		addEventListener("pointerdown", this.down);
 		addEventListener("pointerup", this.up);
@@ -81,7 +80,6 @@ export class GestureManager {
 		removeEventListener("pointermove", this.move);
 		this.pointers.clear();
 		this.stopMomentum();
-		this.cancelLongPress();
 	}
 
 	private handleDown(ev: PointerEvent) {
@@ -94,23 +92,32 @@ export class GestureManager {
 			x: ev.clientX,
 			y: ev.clientY,
 			time: performance.now(),
+			startX: ev.clientX,
+			startY: ev.clientY,
 		});
 
 		if (isFirstFinger) {
 			this.gestureStartTime = performance.now();
 			this.gestureTravel = 0;
 			this.hadTwoFingers = false;
-			this.dragClickActive = false;
-			if (this.getMode() === "mouse") {
-				this.armLongPress();
-			}
 		}
 
 		if (this.pointers.size === 2) {
 			this.hadTwoFingers = true;
-			this.cancelLongPress();
-			this.prevPinchDistance = this.pinchDistance();
+			const [a, b] = [...this.pointers.values()];
+			if (a && b) {
+				// Anchor each finger's "start" to the moment the 2-finger gesture
+				// began — direction is measured from here.
+				a.startX = a.x;
+				a.startY = a.y;
+				b.startX = b.x;
+				b.startY = b.y;
+				this.centroidX = (a.x + b.x) / 2;
+				this.centroidY = (a.y + b.y) / 2;
+				this.prevPinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
+			}
 			this.smoothedPinch = 0;
+			this.twoFingerMode = "undecided";
 		}
 	}
 
@@ -120,32 +127,22 @@ export class GestureManager {
 		if (this.pointers.size < 2) {
 			this.prevPinchDistance = null;
 			this.smoothedPinch = 0;
+			this.twoFingerMode = "undecided";
 		}
 
 		if (this.pointers.size > 0) return;
 
-		this.cancelLongPress();
-
-		const mode = this.getMode();
-
-		if (mode === "mouse") {
-			if (this.dragClickActive) {
-				this.onMouseUp("left");
-				this.dragClickActive = false;
-				return;
-			}
-
-			const elapsed = performance.now() - this.gestureStartTime;
-			if (elapsed <= TAP_MAX_MS && this.gestureTravel <= TAP_MAX_TRAVEL) {
-				this.onClick(this.hadTwoFingers ? "right" : "left");
-			}
+		const elapsed = performance.now() - this.gestureStartTime;
+		if (elapsed <= TAP_MAX_MS && this.gestureTravel <= TAP_MAX_TRAVEL) {
+			this.onClick(this.hadTwoFingers ? "right" : "left");
 			return;
 		}
 
-		// trackpad: momentum
-		const { x, y } = this.velocity;
-		if (Math.hypot(x, y) > MOMENTUM_MIN_SPEED) {
-			this.startMomentum();
+		if (this.hadTwoFingers) {
+			const { x, y } = this.velocity;
+			if (Math.hypot(x, y) > MOMENTUM_MIN_SPEED) {
+				this.startMomentum();
+			}
 		}
 	}
 
@@ -163,66 +160,64 @@ export class GestureManager {
 		pointer.time = now;
 
 		this.gestureTravel += Math.hypot(dx, dy);
-		if (this.gestureTravel > TAP_MAX_TRAVEL) {
-			this.cancelLongPress();
-		}
 
 		if (this.pointers.size === 1) {
-			if (this.getMode() === "mouse") {
-				this.onMove({
-					x: dx * MOUSE_SENSITIVITY,
-					y: dy * MOUSE_SENSITIVITY,
-				});
-				return;
-			}
-
-			this.onScroll({ x: dx, y: dy });
-			const a = VELOCITY_SMOOTHING;
-			this.velocity.x = a * (dx / dt) + (1 - a) * this.velocity.x;
-			this.velocity.y = a * (dy / dt) + (1 - a) * this.velocity.y;
+			this.onMove({
+				x: dx * MOUSE_SENSITIVITY,
+				y: dy * MOUSE_SENSITIVITY,
+			});
 			return;
 		}
 
-		if (this.pointers.size === 2 && this.getMode() === "trackpad") {
-			this.emitPinch();
+		if (this.pointers.size === 2) {
+			this.handleTwoFingerMove(dt);
 		}
 	}
 
-	private armLongPress() {
-		this.cancelLongPress();
-		this.longPressTimer = setTimeout(() => {
-			this.longPressTimer = null;
-			if (this.pointers.size !== 1) return;
-			if (this.gestureTravel > TAP_MAX_TRAVEL) return;
-			this.dragClickActive = true;
-			this.onMouseDown("left");
-		}, LONG_PRESS_MS);
-	}
-
-	private cancelLongPress() {
-		if (this.longPressTimer !== null) {
-			clearTimeout(this.longPressTimer);
-			this.longPressTimer = null;
-		}
-	}
-
-	private pinchDistance(): number {
+	private handleTwoFingerMove(dt: number) {
 		const [a, b] = [...this.pointers.values()];
-		if (!a || !b) return 0;
-		return Math.hypot(a.x - b.x, a.y - b.y);
-	}
+		if (!a || !b) return;
 
-	private emitPinch() {
-		const dist = this.pinchDistance();
-		if (this.prevPinchDistance === null) {
-			this.prevPinchDistance = dist;
+		const newCentroidX = (a.x + b.x) / 2;
+		const newCentroidY = (a.y + b.y) / 2;
+		const dCx = newCentroidX - this.centroidX;
+		const dCy = newCentroidY - this.centroidY;
+		this.centroidX = newCentroidX;
+		this.centroidY = newCentroidY;
+
+		const newDist = Math.hypot(a.x - b.x, a.y - b.y);
+		const dPinch =
+			this.prevPinchDistance === null ? 0 : newDist - this.prevPinchDistance;
+		this.prevPinchDistance = newDist;
+
+		if (this.twoFingerMode === "undecided") {
+			const ax = a.x - a.startX;
+			const ay = a.y - a.startY;
+			const bx = b.x - b.startX;
+			const by = b.y - b.startY;
+			const aMag = Math.hypot(ax, ay);
+			const bMag = Math.hypot(bx, by);
+
+			// Wait until both fingers have a reliable direction vector. Falling
+			// back to scroll when only one has moved would lock us in before a
+			// pinch's slower finger could register.
+			if (aMag < COMMIT_THRESHOLD || bMag < COMMIT_THRESHOLD) return;
+
+			const dot = ax * bx + ay * by;
+			this.twoFingerMode = dot >= 0 ? "scroll" : "pinch";
+		}
+
+		if (this.twoFingerMode === "scroll") {
+			this.onScroll({ x: dCx, y: dCy });
+			const s = VELOCITY_SMOOTHING;
+			this.velocity.x = s * (dCx / dt) + (1 - s) * this.velocity.x;
+			this.velocity.y = s * (dCy / dt) + (1 - s) * this.velocity.y;
 			return;
 		}
-		const delta = dist - this.prevPinchDistance;
-		this.prevPinchDistance = dist;
-		const a = PINCH_SMOOTHING;
-		this.smoothedPinch = a * delta + (1 - a) * this.smoothedPinch;
 
+		// pinch
+		this.smoothedPinch =
+			PINCH_SMOOTHING * dPinch + (1 - PINCH_SMOOTHING) * this.smoothedPinch;
 		if (Math.abs(this.smoothedPinch) > PINCH_DEAD_ZONE) {
 			this.onPinch(this.smoothedPinch);
 		}
