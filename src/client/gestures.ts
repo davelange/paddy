@@ -166,10 +166,12 @@ export class GestureManager {
 		this.gestureTravel += Math.hypot(dx, dy);
 
 		if (this.pointers.size === 1) {
-			this.onMove({
-				x: dx * MOUSE_SENSITIVITY,
-				y: dy * MOUSE_SENSITIVITY,
-			});
+			this.onMove(
+				rotateForLandscape({
+					x: dx * MOUSE_SENSITIVITY,
+					y: dy * MOUSE_SENSITIVITY,
+				}),
+			);
 			return;
 		}
 
@@ -211,7 +213,7 @@ export class GestureManager {
 		}
 
 		if (this.twoFingerMode === "scroll") {
-			this.onScroll({ x: dCx, y: dCy });
+			this.onScroll(rotateForLandscape({ x: dCx, y: dCy }));
 			const s = VELOCITY_SMOOTHING;
 			this.velocity.x = s * (dCx / dt) + (1 - s) * this.velocity.x;
 			this.velocity.y = s * (dCy / dt) + (1 - s) * this.velocity.y;
@@ -235,10 +237,12 @@ export class GestureManager {
 				return;
 			}
 
-			this.onScroll({
-				x: this.velocity.x * FRAME_MS,
-				y: this.velocity.y * FRAME_MS,
-			});
+			this.onScroll(
+				rotateForLandscape({
+					x: this.velocity.x * FRAME_MS,
+					y: this.velocity.y * FRAME_MS,
+				}),
+			);
 			this.momentumRAF = requestAnimationFrame(step);
 		};
 		this.momentumRAF = requestAnimationFrame(step);
