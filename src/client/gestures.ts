@@ -18,6 +18,16 @@ type Options = {
 	onClick: (button: "left" | "right") => void;
 };
 
+/**
+ * CW 90° rotation of an input delta. Used because the user holds the phone in
+ * landscape (home button to the right) while the page is rendered in portrait,
+ * so raw pointer deltas live in the phone's portrait frame and need to be
+ * mapped back to the user's landscape frame (= desktop screen axes).
+ */
+export function rotateForLandscape({ x, y }: Coord): Coord {
+	return { x: y || 0, y: -x || 0 };
+}
+
 const VELOCITY_SMOOTHING = 0.25;
 const MOMENTUM_FRICTION = 0.93;
 const MOMENTUM_MIN_SPEED = 0.02;
