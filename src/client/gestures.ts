@@ -25,7 +25,7 @@ type Options = {
  * mapped back to the user's landscape frame (= desktop screen axes).
  */
 export function rotateForLandscape({ x, y }: Coord): Coord {
-	return { x: y || 0, y: -x || 0 };
+	return { x: y || 0, y: -x || 0 }; // || 0 coerces -0 to +0
 }
 
 const VELOCITY_SMOOTHING = 0.25;
