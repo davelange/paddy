@@ -67,6 +67,14 @@ export class GestureManager {
 	private smoothedPinch = 0;
 	private twoFingerMode: TwoFingerMode = "undecided";
 
+	private isLandscape = false;
+	private orientationMQL: MediaQueryList = window.matchMedia(
+		"(orientation: landscape)",
+	);
+	private onOrientationChange = (e: MediaQueryListEvent) => {
+		this.isLandscape = e.matches;
+	};
+
 	private down = (e: PointerEvent) => this.handleDown(e);
 	private up = (e: PointerEvent) => this.handleUp(e);
 	private move = (e: PointerEvent) => this.handleMove(e);
@@ -77,6 +85,10 @@ export class GestureManager {
 		this.onMove = options.onMove;
 		this.onClick = options.onClick;
 
+		this.orientationMQL = window.matchMedia("(orientation: landscape)");
+		this.isLandscape = this.orientationMQL.matches;
+		this.orientationMQL.addEventListener("change", this.onOrientationChange);
+
 		addEventListener("pointerdown", this.down);
 		addEventListener("pointerup", this.up);
 		addEventListener("pointercancel", this.up);
@@ -84,12 +96,17 @@ export class GestureManager {
 	}
 
 	destroy() {
+		this.orientationMQL.removeEventListener("change", this.onOrientationChange);
 		removeEventListener("pointerdown", this.down);
 		removeEventListener("pointerup", this.up);
 		removeEventListener("pointercancel", this.up);
 		removeEventListener("pointermove", this.move);
 		this.pointers.clear();
 		this.stopMomentum();
+	}
+
+	private alignDelta(d: Coord): Coord {
+		return this.isLandscape ? d : rotateForLandscape(d);
 	}
 
 	private handleDown(ev: PointerEvent) {
@@ -167,7 +184,7 @@ export class GestureManager {
 
 		if (this.pointers.size === 1) {
 			this.onMove(
-				rotateForLandscape({
+				this.alignDelta({
 					x: dx * MOUSE_SENSITIVITY,
 					y: dy * MOUSE_SENSITIVITY,
 				}),
@@ -213,7 +230,7 @@ export class GestureManager {
 		}
 
 		if (this.twoFingerMode === "scroll") {
-			this.onScroll(rotateForLandscape({ x: dCx, y: dCy }));
+			this.onScroll(this.alignDelta({ x: dCx, y: dCy }));
 			const s = VELOCITY_SMOOTHING;
 			this.velocity.x = s * (dCx / dt) + (1 - s) * this.velocity.x;
 			this.velocity.y = s * (dCy / dt) + (1 - s) * this.velocity.y;
@@ -238,7 +255,7 @@ export class GestureManager {
 			}
 
 			this.onScroll(
-				rotateForLandscape({
+				this.alignDelta({
 					x: this.velocity.x * FRAME_MS,
 					y: this.velocity.y * FRAME_MS,
 				}),
