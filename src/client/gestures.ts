@@ -67,10 +67,8 @@ export class GestureManager {
 	private smoothedPinch = 0;
 	private twoFingerMode: TwoFingerMode = "undecided";
 
-	private isLandscape = false;
-	private orientationMQL: MediaQueryList = window.matchMedia(
-		"(orientation: landscape)",
-	);
+	private isLandscape!: boolean;
+	private orientationMQL!: MediaQueryList;
 	private onOrientationChange = (e: MediaQueryListEvent) => {
 		this.isLandscape = e.matches;
 	};
