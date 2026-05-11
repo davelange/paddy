@@ -27,6 +27,13 @@ export type AuthOptions = {
 };
 
 export const api = {
+	async me(): Promise<boolean> {
+		const res = await fetch("/auth/me").catch(() => null);
+		if (!res?.ok) return false;
+		const data = (await res.json()) as { authed?: boolean };
+		return Boolean(data.authed);
+	},
+
 	authOptions(): Promise<AuthOptions> {
 		return postJson("/auth/options");
 	},

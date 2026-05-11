@@ -12,7 +12,6 @@ export class WSConnection {
 	constructor(options: Options = {}) {
 		this.onStatus = options.onStatus;
 		this.socket.onopen = () => this.setState("open");
-		this.socket.onerror = () => this.setState("error");
 		this.socket.onclose = () => {
 			if (this.state !== "open") this.setState("error");
 		};

@@ -221,6 +221,13 @@ export async function handleLoginVerication(req: Request) {
 	return jsonResponse({ ok: true }, { headers: { "Set-Cookie": cookie } });
 }
 
+export function handleSessionCheck(req: Request) {
+	const sid = readSidFromCookie(req.headers.get("cookie"));
+	const session = getSession(sid);
+
+	return jsonResponse({ authed: Boolean(session) });
+}
+
 export function handleLogout(req: Request) {
 	const sid = readSidFromCookie(req.headers.get("cookie"));
 

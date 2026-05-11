@@ -6,6 +6,7 @@ import {
 	handleLoginVerication,
 	handleLogout,
 	handleRegisterVerication,
+	handleSessionCheck,
 	handleWsMessage,
 	handleWsUpgrade,
 } from "./handlers";
@@ -17,6 +18,7 @@ const server = Bun.serve({
 	tls: { cert, key },
 	routes: {
 		"/": index,
+		"/auth/me": { GET: handleSessionCheck },
 		"/auth/options": { POST: createAuthOptions },
 		"/auth/status": { GET: getUserStatus },
 		"/register/verify": { POST: handleRegisterVerication },

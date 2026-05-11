@@ -9,7 +9,8 @@
 	onMount(() => {
 		ws = new WSConnection({
 			onStatus: (s) => {
-				if (s === "error") status = "connection failed";
+				if (s === "open") status = "";
+				else if (s === "error") status = "connection failed";
 			},
 		});
 
