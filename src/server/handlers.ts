@@ -20,6 +20,9 @@ import {
 } from "../auth/webauthn";
 import {
 	createKeyEvent,
+	createMouseButtonEvent,
+	createMouseClickEvent,
+	createMouseMoveEvent,
 	createScrollEvent,
 	createZoomEvent,
 	kVK_LeftArrow,
@@ -66,6 +69,21 @@ export function handleWsMessage(
 			case "key":
 				createKeyEvent(
 					msg.key === "RightArrow" ? kVK_RightArrow : kVK_LeftArrow,
+				);
+				break;
+
+			case "mousemove":
+				createMouseMoveEvent(msg.dx, msg.dy);
+				break;
+
+			case "mouseclick":
+				createMouseClickEvent(msg.button === "right" ? "right" : "left");
+				break;
+
+			case "mousebutton":
+				createMouseButtonEvent(
+					msg.button === "right" ? "right" : "left",
+					msg.action === "up" ? "up" : "down",
 				);
 				break;
 

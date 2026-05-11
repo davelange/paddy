@@ -4,6 +4,7 @@
 	import { WSConnection } from "./ws";
 
 	let status = $state("");
+	let mode = $state<"trackpad" | "mouse">("trackpad");
 	let ws: WSConnection | undefined;
 
 	onMount(() => {
@@ -14,11 +15,24 @@
 		});
 
 		const gestures = new GestureManager({
+			getMode: () => mode,
 			onPinch(delta) {
 				ws?.push({ type: "pinch", delta });
 			},
 			onScroll({ x, y }) {
 				ws?.push({ type: "scroll", dx: x, dy: y });
+			},
+			onMove({ x, y }) {
+				ws?.push({ type: "mousemove", dx: x, dy: y });
+			},
+			onClick(button) {
+				ws?.push({ type: "mouseclick", button });
+			},
+			onMouseDown(button) {
+				ws?.push({ type: "mousebutton", button, action: "down" });
+			},
+			onMouseUp(button) {
+				ws?.push({ type: "mousebutton", button, action: "up" });
 			},
 		});
 
@@ -29,6 +43,12 @@
 		};
 	});
 
+	function toggleMode(e: PointerEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		mode = mode === "trackpad" ? "mouse" : "trackpad";
+	}
+
 	function key(key: "LeftArrow" | "RightArrow") {
 		return (e: PointerEvent) => {
 			e.preventDefault();
@@ -37,6 +57,15 @@
 		};
 	}
 </script>
+
+<button
+	type="button"
+	class="mode-toggle"
+	aria-label="Toggle mode"
+	onpointerdown={toggleMode}
+>
+	{mode === "trackpad" ? "TRACKPAD" : "MOUSE"}
+</button>
 
 <div class="surface">
 	<p class="status">{status}</p>
@@ -105,6 +134,25 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 	.keys button:active {
+		background: rgba(255, 255, 255, 0.05);
+	}
+	.mode-toggle {
+		position: fixed;
+		top: max(10px, env(safe-area-inset-top));
+		right: max(10px, env(safe-area-inset-right));
+		padding: 6px 10px;
+		font: inherit;
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		color: var(--muted);
+		background: transparent;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		z-index: 2;
+	}
+	.mode-toggle:active {
 		background: rgba(255, 255, 255, 0.05);
 	}
 </style>

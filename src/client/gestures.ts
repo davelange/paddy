@@ -9,9 +9,16 @@ type TouchTrack = {
 	time: number;
 };
 
+export type Mode = "trackpad" | "mouse";
+
 type Options = {
+	getMode: () => Mode;
 	onScroll: (delta: Coord) => void;
 	onPinch: (delta: number) => void;
+	onMove: (delta: Coord) => void;
+	onClick: (button: "left" | "right") => void;
+	onMouseDown: (button: "left" | "right") => void;
+	onMouseUp: (button: "left" | "right") => void;
 };
 
 const PINCH_SMOOTHING = 0.35;
@@ -21,10 +28,20 @@ const MOMENTUM_FRICTION = 0.93;
 const MOMENTUM_MIN_SPEED = 0.02;
 const FRAME_MS = 16;
 
+const TAP_MAX_MS = 250;
+const TAP_MAX_TRAVEL = 5;
+const LONG_PRESS_MS = 400;
+const MOUSE_SENSITIVITY = 1.5;
+
 export class GestureManager {
 	private pointers = new Map<number, TouchTrack>();
+	private getMode: Options["getMode"];
 	private onScroll: Options["onScroll"];
 	private onPinch: Options["onPinch"];
+	private onMove: Options["onMove"];
+	private onClick: Options["onClick"];
+	private onMouseDown: Options["onMouseDown"];
+	private onMouseUp: Options["onMouseUp"];
 
 	private prevPinchDistance: number | null = null;
 	private smoothedPinch = 0;
@@ -32,13 +49,24 @@ export class GestureManager {
 	private velocity: Coord = { x: 0, y: 0 };
 	private momentumRAF: number | null = null;
 
+	private gestureStartTime = 0;
+	private gestureTravel = 0;
+	private hadTwoFingers = false;
+	private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+	private dragClickActive = false;
+
 	private down = (e: PointerEvent) => this.handleDown(e);
 	private up = (e: PointerEvent) => this.handleUp(e);
 	private move = (e: PointerEvent) => this.handleMove(e);
 
 	constructor(options: Options) {
+		this.getMode = options.getMode;
 		this.onScroll = options.onScroll;
 		this.onPinch = options.onPinch;
+		this.onMove = options.onMove;
+		this.onClick = options.onClick;
+		this.onMouseDown = options.onMouseDown;
+		this.onMouseUp = options.onMouseUp;
 
 		addEventListener("pointerdown", this.down);
 		addEventListener("pointerup", this.up);
@@ -53,11 +81,14 @@ export class GestureManager {
 		removeEventListener("pointermove", this.move);
 		this.pointers.clear();
 		this.stopMomentum();
+		this.cancelLongPress();
 	}
 
 	private handleDown(ev: PointerEvent) {
 		this.stopMomentum();
 		this.velocity = { x: 0, y: 0 };
+
+		const isFirstFinger = this.pointers.size === 0;
 
 		this.pointers.set(ev.pointerId, {
 			x: ev.clientX,
@@ -65,7 +96,19 @@ export class GestureManager {
 			time: performance.now(),
 		});
 
+		if (isFirstFinger) {
+			this.gestureStartTime = performance.now();
+			this.gestureTravel = 0;
+			this.hadTwoFingers = false;
+			this.dragClickActive = false;
+			if (this.getMode() === "mouse") {
+				this.armLongPress();
+			}
+		}
+
 		if (this.pointers.size === 2) {
+			this.hadTwoFingers = true;
+			this.cancelLongPress();
 			this.prevPinchDistance = this.pinchDistance();
 			this.smoothedPinch = 0;
 		}
@@ -79,11 +122,30 @@ export class GestureManager {
 			this.smoothedPinch = 0;
 		}
 
-		if (this.pointers.size === 0) {
-			const { x, y } = this.velocity;
-			if (Math.hypot(x, y) > MOMENTUM_MIN_SPEED) {
-				this.startMomentum();
+		if (this.pointers.size > 0) return;
+
+		this.cancelLongPress();
+
+		const mode = this.getMode();
+
+		if (mode === "mouse") {
+			if (this.dragClickActive) {
+				this.onMouseUp("left");
+				this.dragClickActive = false;
+				return;
 			}
+
+			const elapsed = performance.now() - this.gestureStartTime;
+			if (elapsed <= TAP_MAX_MS && this.gestureTravel <= TAP_MAX_TRAVEL) {
+				this.onClick(this.hadTwoFingers ? "right" : "left");
+			}
+			return;
+		}
+
+		// trackpad: momentum
+		const { x, y } = this.velocity;
+		if (Math.hypot(x, y) > MOMENTUM_MIN_SPEED) {
+			this.startMomentum();
 		}
 	}
 
@@ -100,7 +162,20 @@ export class GestureManager {
 		pointer.y = ev.clientY;
 		pointer.time = now;
 
+		this.gestureTravel += Math.hypot(dx, dy);
+		if (this.gestureTravel > TAP_MAX_TRAVEL) {
+			this.cancelLongPress();
+		}
+
 		if (this.pointers.size === 1) {
+			if (this.getMode() === "mouse") {
+				this.onMove({
+					x: dx * MOUSE_SENSITIVITY,
+					y: dy * MOUSE_SENSITIVITY,
+				});
+				return;
+			}
+
 			this.onScroll({ x: dx, y: dy });
 			const a = VELOCITY_SMOOTHING;
 			this.velocity.x = a * (dx / dt) + (1 - a) * this.velocity.x;
@@ -108,8 +183,26 @@ export class GestureManager {
 			return;
 		}
 
-		if (this.pointers.size === 2) {
+		if (this.pointers.size === 2 && this.getMode() === "trackpad") {
 			this.emitPinch();
+		}
+	}
+
+	private armLongPress() {
+		this.cancelLongPress();
+		this.longPressTimer = setTimeout(() => {
+			this.longPressTimer = null;
+			if (this.pointers.size !== 1) return;
+			if (this.gestureTravel > TAP_MAX_TRAVEL) return;
+			this.dragClickActive = true;
+			this.onMouseDown("left");
+		}, LONG_PRESS_MS);
+	}
+
+	private cancelLongPress() {
+		if (this.longPressTimer !== null) {
+			clearTimeout(this.longPressTimer);
+			this.longPressTimer = null;
 		}
 	}
 
