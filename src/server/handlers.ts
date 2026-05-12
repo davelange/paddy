@@ -75,9 +75,16 @@ export function handleWsMessage(
 				createMouseMoveEvent(msg.dx, msg.dy);
 				break;
 
-			case "mouseclick":
-				createMouseClickEvent(msg.button === "right" ? "right" : "left");
+			case "mouseclick": {
+				const count = Number.isFinite(msg.clickCount)
+					? Math.max(1, msg.clickCount | 0)
+					: 1;
+				createMouseClickEvent(
+					msg.button === "right" ? "right" : "left",
+					count,
+				);
 				break;
+			}
 
 			default:
 				console.log(msg);

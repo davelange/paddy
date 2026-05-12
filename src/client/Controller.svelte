@@ -24,8 +24,8 @@
 			onMove({ x, y }) {
 				ws?.push({ type: "mousemove", dx: x, dy: y });
 			},
-			onClick(button) {
-				ws?.push({ type: "mouseclick", button });
+			onClick(button, clickCount) {
+				ws?.push({ type: "mouseclick", button, clickCount });
 			},
 		});
 

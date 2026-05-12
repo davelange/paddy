@@ -15,8 +15,25 @@ type Options = {
 	onScroll: (delta: Coord) => void;
 	onPinch: (delta: number) => void;
 	onMove: (delta: Coord) => void;
-	onClick: (button: "left" | "right") => void;
+	onClick: (button: "left" | "right", clickCount: number) => void;
 };
+
+type TapAnchor = { time: number; x: number; y: number; count: number };
+
+export const MULTI_TAP_MAX_MS = 350;
+export const MULTI_TAP_MAX_DIST = 20;
+
+export function nextClickCount(
+	prev: TapAnchor | null,
+	next: { time: number; x: number; y: number },
+	maxMs = MULTI_TAP_MAX_MS,
+	maxDist = MULTI_TAP_MAX_DIST,
+): number {
+	if (!prev) return 1;
+	const dt = next.time - prev.time;
+	const dist = Math.hypot(next.x - prev.x, next.y - prev.y);
+	return dt <= maxMs && dist <= maxDist ? prev.count + 1 : 1;
+}
 
 /**
  * CW 90° rotation of an input delta. Used because the user holds the phone in
@@ -60,6 +77,7 @@ export class GestureManager {
 	private gestureStartTime = 0;
 	private gestureTravel = 0;
 	private hadTwoFingers = false;
+	private lastTap: TapAnchor | null = null;
 
 	private centroidX = 0;
 	private centroidY = 0;
@@ -100,6 +118,7 @@ export class GestureManager {
 		removeEventListener("pointercancel", this.up);
 		removeEventListener("pointermove", this.move);
 		this.pointers.clear();
+		this.lastTap = null;
 		this.stopMomentum();
 	}
 
@@ -151,9 +170,18 @@ export class GestureManager {
 
 		if (this.pointers.size > 0) return;
 
-		const elapsed = performance.now() - this.gestureStartTime;
+		const now = performance.now();
+		const elapsed = now - this.gestureStartTime;
 		if (elapsed <= TAP_MAX_MS && this.gestureTravel <= TAP_MAX_TRAVEL) {
-			this.onClick(this.hadTwoFingers ? "right" : "left");
+			if (this.hadTwoFingers) {
+				this.onClick("right", 1);
+				this.lastTap = null;
+			} else {
+				const next = { time: now, x: ev.clientX, y: ev.clientY };
+				const count = nextClickCount(this.lastTap, next);
+				this.onClick("left", count);
+				this.lastTap = { ...next, count };
+			}
 			return;
 		}
 

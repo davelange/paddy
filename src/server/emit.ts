@@ -86,7 +86,7 @@ const kCGEventRightMouseDragged = 7;
 
 const kCGMouseButtonLeft = 0;
 const kCGMouseButtonRight = 1;
-const kCGMouseEventClickState = 14;
+const kCGMouseEventClickState = 1;
 
 const NO_FLAGS = 0n;
 const CMD_FLAG = BigInt(kCGEventFlagMaskCommand);
@@ -231,6 +231,7 @@ export function createMouseMoveEvent(dx: number, dy: number) {
 			: kCGEventMouseMoved;
 	const button = rightDown ? kCGMouseButtonRight : kCGMouseButtonLeft;
 
+	// No CGEventSetFlags: at kCGHIDEventTap macOS merges live keyboard modifiers, so shift-drag etc. work.
 	withEvent(
 		() =>
 			lib.symbols.CGEventCreateMouseEvent(
@@ -240,15 +241,14 @@ export function createMouseMoveEvent(dx: number, dy: number) {
 				cursorY as number,
 				button,
 			),
-		(event) => {
-			lib.symbols.CGEventSetFlags(event, NO_FLAGS);
-		},
+		() => {},
 	);
 }
 
 export function createMouseButtonEvent(
 	button: "left" | "right",
 	action: "down" | "up",
+	clickCount = 1,
 ) {
 	ensureCursorInit();
 	const isLeft = button === "left";
@@ -262,6 +262,7 @@ export function createMouseButtonEvent(
 				: kCGEventRightMouseUp;
 	const btn = isLeft ? kCGMouseButtonLeft : kCGMouseButtonRight;
 
+	// No CGEventSetFlags: at kCGHIDEventTap macOS merges live keyboard modifiers, so shift-click etc. work.
 	withEvent(
 		() =>
 			lib.symbols.CGEventCreateMouseEvent(
@@ -275,9 +276,8 @@ export function createMouseButtonEvent(
 			lib.symbols.CGEventSetIntegerValueField(
 				event,
 				kCGMouseEventClickState,
-				1,
+				clickCount,
 			);
-			lib.symbols.CGEventSetFlags(event, NO_FLAGS);
 		},
 	);
 
@@ -285,9 +285,12 @@ export function createMouseButtonEvent(
 	else rightDown = action === "down";
 }
 
-export function createMouseClickEvent(button: "left" | "right") {
-	createMouseButtonEvent(button, "down");
-	createMouseButtonEvent(button, "up");
+export function createMouseClickEvent(
+	button: "left" | "right",
+	clickCount = 1,
+) {
+	createMouseButtonEvent(button, "down", clickCount);
+	createMouseButtonEvent(button, "up", clickCount);
 }
 
 export function createZoomEvent(delta: number) {
