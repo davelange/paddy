@@ -16,6 +16,9 @@ type Options = {
 	onPinch: (delta: number) => void;
 	onMove: (delta: Coord) => void;
 	onClick: (button: "left" | "right", clickCount: number) => void;
+	onMouseDown: (button: "left" | "right") => void;
+	onMouseUp: (button: "left" | "right") => void;
+	onDragModeChange: (active: boolean) => void;
 };
 
 type TapAnchor = { time: number; x: number; y: number; count: number };
@@ -62,6 +65,8 @@ const PINCH_DEAD_ZONE = 0.5;
 // opposed vectors = pinch.
 const COMMIT_THRESHOLD = 5;
 
+const DRAG_TOGGLE_FINGERS = 4;
+
 type TwoFingerMode = "undecided" | "scroll" | "pinch";
 
 export class GestureManager {
@@ -70,6 +75,9 @@ export class GestureManager {
 	private onPinch: Options["onPinch"];
 	private onMove: Options["onMove"];
 	private onClick: Options["onClick"];
+	private onMouseDown: Options["onMouseDown"];
+	private onMouseUp: Options["onMouseUp"];
+	private onDragModeChange: Options["onDragModeChange"];
 
 	private velocity: Coord = { x: 0, y: 0 };
 	private momentumRAF: number | null = null;
@@ -78,6 +86,12 @@ export class GestureManager {
 	private gestureTravel = 0;
 	private hadTwoFingers = false;
 	private lastTap: TapAnchor | null = null;
+
+	private dragMode = false;
+	private leftButtonHeld = false;
+	// Once 4 fingers have toggled the mode, ignore the trailing taps/moves/lifts
+	// of those same fingers until the surface is fully clear.
+	private consumeGesture = false;
 
 	private centroidX = 0;
 	private centroidY = 0;
@@ -100,6 +114,9 @@ export class GestureManager {
 		this.onPinch = options.onPinch;
 		this.onMove = options.onMove;
 		this.onClick = options.onClick;
+		this.onMouseDown = options.onMouseDown;
+		this.onMouseUp = options.onMouseUp;
+		this.onDragModeChange = options.onDragModeChange;
 
 		this.orientationMQL = window.matchMedia("(orientation: landscape)");
 		this.isLandscape = this.orientationMQL.matches;
@@ -117,6 +134,10 @@ export class GestureManager {
 		removeEventListener("pointerup", this.up);
 		removeEventListener("pointercancel", this.up);
 		removeEventListener("pointermove", this.move);
+		if (this.leftButtonHeld) {
+			this.onMouseUp("left");
+			this.leftButtonHeld = false;
+		}
 		this.pointers.clear();
 		this.lastTap = null;
 		this.stopMomentum();
@@ -144,6 +165,31 @@ export class GestureManager {
 			this.gestureStartTime = performance.now();
 			this.gestureTravel = 0;
 			this.hadTwoFingers = false;
+
+			// In drag mode, the button is held for the whole mode — lift/redrop
+			// is just trackpad re-anchoring. Only emit on the *first* engagement
+			// after entering the mode; the toggle-off path releases.
+			if (
+				this.dragMode &&
+				!this.leftButtonHeld &&
+				!this.consumeGesture
+			) {
+				this.onMouseDown("left");
+				this.leftButtonHeld = true;
+			}
+		}
+
+		if (
+			this.pointers.size === DRAG_TOGGLE_FINGERS &&
+			!this.consumeGesture
+		) {
+			if (this.leftButtonHeld) {
+				this.onMouseUp("left");
+				this.leftButtonHeld = false;
+			}
+			this.dragMode = !this.dragMode;
+			this.onDragModeChange(this.dragMode);
+			this.consumeGesture = true;
 		}
 
 		if (this.pointers.size === 2) {
@@ -169,6 +215,20 @@ export class GestureManager {
 		this.pointers.delete(ev.pointerId);
 
 		if (this.pointers.size > 0) return;
+
+		if (this.consumeGesture) {
+			this.consumeGesture = false;
+			this.lastTap = null;
+			return;
+		}
+
+		// In drag mode, the button stays held across finger lifts so the user
+		// can reposition and continue the same drag. The mode toggle is what
+		// releases it.
+		if (this.dragMode) {
+			this.lastTap = null;
+			return;
+		}
 
 		const now = performance.now();
 		const elapsed = now - this.gestureStartTime;
@@ -207,6 +267,8 @@ export class GestureManager {
 		pointer.time = now;
 
 		this.gestureTravel += Math.hypot(dx, dy);
+
+		if (this.consumeGesture) return;
 
 		if (this.pointers.size === 1) {
 			this.onMove(

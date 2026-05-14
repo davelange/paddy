@@ -20,6 +20,7 @@ import {
 } from "../auth/webauthn";
 import {
 	createKeyEvent,
+	createMouseButtonEvent,
 	createMouseClickEvent,
 	createMouseMoveEvent,
 	createScrollEvent,
@@ -85,6 +86,20 @@ export function handleWsMessage(
 				);
 				break;
 			}
+
+			case "mousedown":
+				createMouseButtonEvent(
+					msg.button === "right" ? "right" : "left",
+					"down",
+				);
+				break;
+
+			case "mouseup":
+				createMouseButtonEvent(
+					msg.button === "right" ? "right" : "left",
+					"up",
+				);
+				break;
 
 			default:
 				console.log(msg);
